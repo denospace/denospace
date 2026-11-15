@@ -35,6 +35,10 @@ $comment-border: 1px;
 }
 
 #sb-main .cm-editor {
+  // The margin the markers live in. Wide enough for three heading stars or a
+  // two-digit list number at the editor's own size.
+  --sb-gutter: 2.6ch;
+
   // 16.5/1.62 rather than 18/1.5: a proportional face sets more characters
   // per line than a mono one at the same size, so it wants a little less of
   // it and a little more leading.
@@ -73,7 +77,9 @@ $comment-border: 1px;
     margin-left: auto;
     margin-right: auto;
     max-width: var(--#{"editor-width"});
-    padding: 5px 20px;
+    // The gutter is carved out of the content's own left padding, so the text
+    // column keeps its measure and markers have somewhere to hang.
+    padding: 5px 20px 5px calc(20px + var(--sb-gutter));
 
     // A column, the body size and a `> ` in the editor's own font, which is
     // set on this element.
@@ -104,38 +110,16 @@ $comment-border: 1px;
     // edge otherwise, and a quote's bar breaks at every padded line.
     --sb-line-pad-y: 0px;
 
-    // Outline depth, set per line by `outlineIndentPlugin`. Deliberately not
-    // part of `--sb-indent`: the negative `text-indent` below cancels that
-    // one so a list marker hangs, and an outline indent has to move the
-    // first row too or a heading sits flush left under its own body.
-    --sb-outline-depth: 0;
-    --sb-outline-indent: calc(var(--sb-outline-depth) * var(--sb-outline-step));
-
+    // The text column has one left edge, whatever a line's outline depth.
+    // That is book-mode's rule -- "text is always aligned" -- and it is why
+    // the markers go in a margin instead: depth is read off what hangs in the
+    // gutter, not off where the prose starts.
     position: relative;
-    padding-left: calc(var(--sb-indent) + var(--sb-outline-indent));
+    padding-left: var(--sb-indent);
     padding-top: var(--sb-line-pad-y);
     padding-bottom: var(--sb-line-pad-y);
     text-indent: calc(-1 * (var(--sb-indent) + var(--sb-header-hang)));
 
-    // One hairline per level crossed, in the indent it opened up. Adjacent
-    // lines paint the same x positions, so the marks join into continuous
-    // rules down a subtree -- which is the whole point: you read the depth
-    // off the bars rather than off the type.
-    //
-    // On a pseudo-element rather than the line's own background, which a
-    // blockquote's dashed bar already owns.
-    &::before {
-      content: "";
-      position: absolute;
-      left: 0;
-      top: 0;
-      bottom: 0;
-      width: var(--sb-outline-indent);
-      pointer-events: none;
-      background-image: repeating-linear-gradient(to right,
-          var(--editor-outline-guide-color) 0 1px,
-          transparent 1px var(--sb-outline-step));
-    }
 
     &.sb-line-h1,
     &.sb-line-h2,
@@ -315,6 +299,14 @@ $comment-border: 1px;
   .cm-list-bullet {
     color: var(--editor-list-bullet-color, inherit);
     white-space: nowrap; // Prevent bullet from being a line-wrap opportunity (fixes #1829)
+    // Right-aligned in a box of its own, so `1.` and `10.` leave the text at
+    // the same place -- which is the whole reason book-mode aligns its
+    // margin right rather than left.
+    display: inline-block;
+    width: var(--sb-gutter);
+    margin-left: calc(-1 * var(--sb-gutter));
+    text-align: right;
+    padding-right: 0.4ch;
   }
 
   .cm-task-checked,

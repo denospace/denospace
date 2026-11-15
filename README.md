@@ -818,24 +818,28 @@ would be worse than having one imperfect one. The rule sits after the `[[…]]`
 branch, so a URL inside a bracketed link is already consumed and never matches
 twice.
 
-### An outline laid out, not sized
+### A book layout: markers in the margin
 
-`org-indent-mode`, roughly, with `indent-bars` over the top: a heading sits
-one step in from its parent and the text under it one step further, so depth
-reads off the left edge. Type size is then constant down the whole document
-and weight carries the hierarchy — 700, 600, 500, then body copy from the
-fourth level on, where a heading is a label on a passage and its indent
-already says where it sits.
+After `book-mode`'s rule — *"leading stars and bullets in the left margin
+using right alignment"* — so the text column has **one left edge** whatever a
+line's outline depth. Depth is read off what hangs in the gutter and off the
+weight of the heading, never off where the prose starts.
 
-Every line gets a depth, not only headings. That is what makes it an outline
-rather than a run of differently-placed titles, and it gives the guide bars
-something continuous to paint against: one hairline per level crossed, drawn
-in the indent it opened up, at the same x on adjacent lines so the marks join
-into rules down a subtree.
+Right alignment is the part that earns its keep, because marker widths vary:
+`1.` and `10.`, or `*` and `***`, would otherwise leave their text at
+different places. A marker is boxed to the gutter and aligned right, so the
+text edge is constant.
 
-Two knobs, both in `theme.scss`: `--sb-outline-step` (1.1rem) and
-`--editor-outline-guide-color`. The depth itself comes from
-`outlineIndentPlugin`, which sets `--sb-outline-depth` per line.
+One size throughout, weight for the hierarchy: 700, 600, 500, then body copy
+from the fourth level on, where a heading is a label on a passage.
+
+`--sb-gutter` (2.6ch) is the margin's width — wide enough for three heading
+stars or a two-digit list number.
+
+This replaced a stepped indent with one hairline guide per level crossed.
+That read well in a code editor and badly in prose: deep content started a
+long way in, eating the measure, and the rules drew attention to structure
+rather than to the writing.
 
 ### Org TODO keywords
 
