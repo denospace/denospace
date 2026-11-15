@@ -31,9 +31,16 @@ test.describe("The page name in the top bar", () => {
         title: q(".sb-dn-title"),
         signature: q(".sb-dn-signature"),
         identifier: q(".sb-dn-identifier"),
+        // Laid out right to left so the keywords drop before the title does,
+        // so position is what says what order they read in.
         keywords: [
           ...document.querySelectorAll("#sb-current-page .sb-dn-keyword"),
-        ].map((el) => el.textContent),
+        ]
+          .sort(
+            (a, b) =>
+              a.getBoundingClientRect().left - b.getBoundingClientRect().left,
+          )
+          .map((el) => el.textContent),
       };
     });
 
@@ -96,26 +103,47 @@ test.describe("The page name in the top bar", () => {
       timeout: 20_000,
     });
 
-    // Everything that is not the title gives up its room. The signature was
-    // the expensive one: 72px of a 222px bar for five monospace characters.
-    for (const part of ["identifier", "keyword", "signature"]) {
+    // The date and the keywords give up their room entirely -- 250px of a
+    // 212px bar, for things that are in the note's front matter anyway.
+    for (const part of ["identifier", "keyword"]) {
       await expect(
         sbPage.locator(`#sb-current-page .sb-dn-${part}`).first(),
       ).toBeHidden();
     }
 
+    // The signature stays, because it is how the library is addressed -- but
+    // without its pill, which is what made it expensive here.
+    const signature = sbPage.locator("#sb-current-page .sb-dn-signature");
+    await expect(signature).toBeVisible();
+    expect(
+      await signature.evaluate((el) =>
+        Math.round(el.getBoundingClientRect().width),
+      ),
+    ).toBeLessThan(50);
+
     // And the title is actually readable rather than ellipsised to a stub:
     // it is what the whole bar is for.
     const width = await sbPage.evaluate(() => {
       const el = document.querySelector("#sb-current-page .sb-dn-title")!;
+      // The title's own box hugs its text -- it is capped, never shrunk --
+      // so the room it has is the row it sits in, and what it needs is the
+      // text's own rect.
+      const range = document.createRange();
+      range.selectNodeContents(el);
       return {
-        shown: Math.round(el.getBoundingClientRect().width),
-        needed: Math.round(el.scrollWidth),
+        shown: Math.round(
+          document
+            .querySelector("#sb-current-page .sb-dn-main")!
+            .getBoundingClientRect().width,
+        ),
+        needed: Math.round(range.getBoundingClientRect().width),
       };
     });
     expect(width.shown).toBeGreaterThanOrEqual(width.needed);
-    // Not merely "fits" -- it has the bar, which is the point of the change.
-    expect(width.shown).toBeGreaterThan(200);
+    // Not merely "fits" -- it fits with room over. Measured at 390px: the
+    // bar leaves 212px for the name, the signature takes 35px of it, and
+    // this title needs about 105px of the rest.
+    expect(width.shown - width.needed).toBeGreaterThan(40);
   });
 
   test("a page that is not a Denote note is left as its name", async ({

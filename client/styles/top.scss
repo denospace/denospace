@@ -33,6 +33,9 @@
 
     #sb-current-page {
       flex: 1;
+      // Keeps the date off the first action button; without it the two touch
+      // and the name reads as though it ran out of room.
+      margin-right: 10px;
 
       overflow: hidden;
       white-space: nowrap;
@@ -83,20 +86,66 @@
         inset: 0;
         display: flex;
         align-items: center;
-        gap: 7px;
         min-width: 0;
         line-height: 1.35;
         pointer-events: none;
       }
 
-      // The title takes the room and the others give it up: it is the only
-      // part of the name a person reads, and in a flex row the one shrinkable
-      // item absorbs every bit of squeeze. Left to default `flex`, the title
-      // was the only thing that could shrink, so two keyword pills and a date
-      // kept their full width while it ellipsised away to nothing.
-      .sb-dn-title {
+      .sb-dn-parts {
+        display: flex;
+        align-items: center;
+        gap: 7px;
         flex: 1 1 auto;
-        min-width: 3em;
+        min-width: 0;
+      }
+
+      // Turning the page of a diary. Quiet until wanted, and the one part of
+      // the name display that takes clicks -- the rest of it stays
+      // click-through so that the bar still renames the file.
+      .sb-dn-journal {
+        flex: 0 0 auto;
+        pointer-events: auto;
+        -webkit-app-region: no-drag;
+        background: none;
+        border: 0;
+        // Sized for a thumb, not for the glyph.
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 26px;
+        align-self: stretch;
+        padding: 0 4px;
+        font-family: inherit;
+        font-size: 0.95em;
+        line-height: 1;
+        color: var(--top-identifier-color);
+        cursor: pointer;
+
+        &:hover {
+          color: var(--top-color);
+        }
+      }
+
+      // Title and keywords share a box of their own so that the squeeze can
+      // be given to one of them and not the other. In a flat row, flex
+      // shrink is *proportional*: the title would always give up some of any
+      // overflow, and a title two tenths of a pixel short of its text is a
+      // title with an ellipsis on it. Here the box takes the squeeze from
+      // the row, and inside it the keywords take all of it -- the title
+      // cannot shrink, only cap.
+      .sb-dn-main {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+
+      // Never shrunk, only capped: the cap is what draws the ellipsis, and
+      // it only binds once the keywords have nothing left to give.
+      .sb-dn-title {
+        flex: 0 0 auto;
+        max-width: 100%;
         color: var(--top-color);
         font-weight: 500;
         overflow: hidden;
@@ -104,23 +153,58 @@
         white-space: nowrap;
       }
 
+      // Right to left, so the row is eaten from its far end: the keywords
+      // closest to the title go first. Two lines' worth of pills in one
+      // line's worth of height means a pill that no longer fits wraps out of
+      // sight rather than being shaved -- whole or gone.
+      .sb-dn-keywords {
+        display: flex;
+        flex-direction: row-reverse;
+        flex-wrap: wrap;
+        align-content: flex-start;
+        gap: 7px;
+        margin-left: auto;
+        // Margin, not padding: `overflow` clips at the padding box, so any
+        // padding here is a strip the overflow would be drawn into.
+        // Flex shrink is proportional, so the title always gives up *some*
+        // of any squeeze. At a thousand to one that share is a fraction of a
+        // pixel -- which matters, because a title two pixels short of its
+        // box is a title with an ellipsis on it.
+        flex: 0 1 auto;
+        flex-shrink: 1000;
+        min-width: 0;
+        font-size: 0.74em;
+        line-height: 1.6;
+        max-height: 1.6em;
+        overflow: hidden;
+      }
+
       .sb-dn-signature,
       .sb-dn-keyword {
-        // Shrinkable before the title is, and never past legibility: a pill
-        // clipped mid-word is worse than no pill.
-        flex: 0 1 auto;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        font-size: 0.74em;
+        flex: 0 0 auto;
         line-height: 1.6;
         padding: 0 7px;
         border-radius: 999px;
         white-space: nowrap;
       }
 
+      // The last one standing. Wrapping takes care of every pill but the
+      // first on a line, which always "fits" however narrow the line is --
+      // so that one shrinks and ends in an ellipsis rather than being
+      // chopped off mid-word, and reaches nothing at all when the row does.
+      .sb-dn-keyword {
+        flex-shrink: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
       // The address is structural, the keywords are subjects: a different
-      // read for a different kind of fact.
+      // read for a different kind of fact. The address is also five or six
+      // characters and means nothing truncated, so it holds its width while
+      // everything around it negotiates.
       .sb-dn-signature {
+        font-size: 0.74em;
         font-family: var(--editor-monospace-font, monospace);
         font-variant-numeric: tabular-nums;
         background-color: var(--top-signature-background-color);
@@ -136,7 +220,6 @@
       // its tooltip for when it is the file you actually want.
       .sb-dn-identifier {
         flex: 0 0 auto;
-        margin-left: auto;
         padding-left: 10px;
         font-size: 0.74em;
         font-variant-numeric: tabular-nums;
@@ -206,18 +289,37 @@
 @media only screen and (max-width: 600px) {
 
   /*
-   * A phone has room for the title and nothing else, so the title gets it
-   * all. Measured at 390px: the bar leaves 222px for the name, and the
-   * signature pill alone was taking 72px of it -- five monospace characters
-   * with a pill's padding -- which is a third of the width for something you
-   * are not reading. The date and keywords went the same way and for the same
-   * reason. All three are still in the note's own front matter, and come back
-   * the moment there is room for them.
+   * A phone has room for the title and its address, and nothing else.
+   * Measured at 390px the bar leaves 212px for the name. The date and the
+   * keywords were 250px of it -- more than the whole bar -- for things you
+   * are not reading there, and they are in the note's own front matter two
+   * lines below; they come back the moment there is room. The signature is
+   * how the library is addressed, so it stays, but it gives up the pill: as
+   * plain mono text it costs 45px rather than 76px, and still reads as a
+   * call number in the margin.
    */
-  #sb-top #sb-current-page .sb-dn-identifier,
-  #sb-top #sb-current-page .sb-dn-keyword,
-  #sb-top #sb-current-page .sb-dn-signature {
+  /*
+   * And the type comes down with it. 28px of title in a 212px bar is eleven
+   * characters; at 20px the same bar holds seventeen, which is the cheapest
+   * thing that can be done about a cut-off title -- no layout change buys as
+   * much. It is still half again the size of the prose underneath.
+   */
+  #sb-top .main .inner {
+    font-size: 20px;
+  }
+
+  // `.main` is in the selector because the rules above are nested under it,
+  // and the keyword row's own `display: flex` would otherwise outrank this.
+  #sb-top .main #sb-current-page .sb-dn-keywords,
+  #sb-top .main #sb-current-page .sb-dn-identifier {
     display: none;
+  }
+
+  #sb-top .main #sb-current-page .sb-dn-signature {
+    background: none;
+    padding: 0;
+    font-size: 0.58em;
+    color: var(--top-identifier-color);
   }
 
   /* Let the hamburger fly-out escape the top bar's scroll container */

@@ -836,6 +836,27 @@ export function parseLocalDate(dateStr: string): Date {
   return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
 }
 
+/**
+ * Whether a file name is a journal entry.
+ *
+ * `denote-journal--filename-regexp` and `--keyword-regex` together: an entry
+ * lives in the journal directory and carries the journal keyword. Decided
+ * from the name alone, so the client can ask it of the page it is showing
+ * without waiting on an index.
+ */
+export function isJournalEntryName(
+  name: string,
+  journal: { directory: string; keyword: string },
+): boolean {
+  if (journal.directory && !name.startsWith(`${journal.directory}/`)) {
+    return false;
+  }
+  const parsed = parseDenoteName(name);
+  return (
+    !!parsed?.identifier && parsed.keywords.includes(journal.keyword)
+  );
+}
+
 /** `YYYYMMDD` — the identifier prefix every entry for a day shares. */
 export function journalDateStamp(date: Date): string {
   return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}`;

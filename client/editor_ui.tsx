@@ -1,5 +1,6 @@
 import { closeSearchPanel } from "@codemirror/search";
 import { runScopeHandlers } from "@codemirror/view";
+import { isJournalEntryName } from "@silverbulletmd/silverbullet/lib/denote";
 import { getNameFromPath } from "@silverbulletmd/silverbullet/lib/ref";
 import type {
   FilterOption,
@@ -384,6 +385,31 @@ export class MainUI {
       [],
     );
 
+    // Arrows for stepping through the journal, shown only while reading one
+    // of its entries. A journal is read a day at a time, back and forth, and
+    // reaching for the command palette to turn a page is a strange way to
+    // read a diary. Both commands exist already; this is the way to them that
+    // a thumb can reach.
+    const currentPageName = !viewState.current
+      ? ""
+      : getNameFromPath(viewState.current.path);
+    const onJournalEntry =
+      !!currentPageName &&
+      isJournalEntryName(currentPageName, {
+        directory: client.config.get<string>(
+          "denote.journalDirectory",
+          "journal",
+        ),
+        keyword: client.config.get<string>("denote.journalKeyword", "journal"),
+      });
+    const journalNav = onJournalEntry
+      ? {
+          previous: () =>
+            this.client.runCommandByName("Denote: Journal Previous"),
+          next: () => this.client.runCommandByName("Denote: Journal Next"),
+        }
+      : undefined;
+
     // One modal at a time, last open wins: a navigator modal taking the slot
     // closes the plug panel that had it, the way the keyed-panel reducer case
     // used to. Both on screen means two stacked backdrops, with the
@@ -435,9 +461,7 @@ export class MainUI {
           />
         )}
         <TopBar
-          pageName={
-            !viewState.current ? "" : getNameFromPath(viewState.current.path)
-          }
+          pageName={currentPageName}
           notifications={viewState.notifications}
           onDismissNotification={(id) => {
             dispatch({ type: "dismiss-notification", id });
@@ -475,6 +499,7 @@ export class MainUI {
               client.focus();
             }
           }}
+          journalNav={journalNav}
           actionButtons={[
             ...(viewState.isMobile &&
             client.config

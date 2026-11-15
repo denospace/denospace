@@ -8,6 +8,17 @@ import {
   parseDenoteName,
 } from "@silverbulletmd/silverbullet/lib/denote";
 
+/**
+ * Stepping through the journal, when the page being read is one of its
+ * entries. A journal is read a day at a time, back and forth, and an entry's
+ * title is its date -- so the two arrows belong either side of the name,
+ * where they turn a page, rather than as two more icons in the toolbar.
+ */
+export type JournalNav = {
+  previous: () => void;
+  next: () => void;
+};
+
 export type ActionButton = {
   icon: FunctionalComponent<any>;
   description: string;
@@ -169,8 +180,22 @@ function ActionButtons({
  *
  * The identifier sits last and quiet: it is the note's identity, not its
  * label, and its date is already the most useful thing about it.
+ *
+ * Only the title is read, so only the title gets the room. The signature
+ * holds the left -- it is the note's address, a handful of characters, and a
+ * clipped address is no address -- and the date holds the right. Between them
+ * the keywords are the one negotiable thing, and they give way to the title
+ * one at a time: `row-reverse` plus wrapping inside a one-line-tall box means
+ * a pill that no longer fits is pushed onto a second line and clipped away
+ * whole, instead of every pill being shaved at once.
  */
-function DenoteName({ pageName }: { pageName: string }) {
+function DenoteName({
+  pageName,
+  journalNav,
+}: {
+  pageName: string;
+  journalNav?: JournalNav;
+}) {
   const parsed = parseDenoteName(pageName);
   if (!parsed?.identifier) {
     return null;
@@ -180,25 +205,73 @@ function DenoteName({ pageName }: { pageName: string }) {
     : parsed.identifier;
   const date = denoteIdentifierToDate(parsed.identifier);
   return (
-    <span className="sb-denote-name" aria-hidden="true">
-      {parsed.signature && (
-        <span className="sb-dn-signature">{parsed.signature}</span>
+    <span className="sb-denote-name">
+      {journalNav && (
+        <button
+          type="button"
+          className="sb-dn-journal"
+          title="Earlier journal entry"
+          aria-label="Earlier journal entry"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            journalNav.previous();
+          }}
+        >
+          &lsaquo;
+        </button>
       )}
-      <span className="sb-dn-title">{title}</span>
-      {parsed.keywords.map((keyword) => (
-        <span className="sb-dn-keyword" key={keyword}>
-          {keyword}
+      {/*
+        The file name itself is on the input underneath, which is what anything
+        reading this bar should read; this is its presentation.
+      */}
+      <span className="sb-dn-parts" aria-hidden="true">
+        {parsed.signature && (
+          <span className="sb-dn-signature">{parsed.signature}</span>
+        )}
+        <span className="sb-dn-main">
+          <span className="sb-dn-title">{title}</span>
+          {/*
+        Laid out right to left, so the row is eaten from its far end and the
+        keywords nearest the title are the first to go. Reversed here to
+        cancel that out: on screen they read in the order the file names them.
+      */}
+          <span className="sb-dn-keywords">
+            {parsed.keywords
+              .slice()
+              .reverse()
+              .map((keyword) => (
+                <span className="sb-dn-keyword" key={keyword}>
+                  {keyword}
+                </span>
+              ))}
+          </span>
         </span>
-      ))}
-      <span className="sb-dn-identifier" title={pageName}>
-        {date
-          ? date.toLocaleDateString(undefined, {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-            })
-          : parsed.identifier}
+        <span className="sb-dn-identifier" title={pageName}>
+          {date
+            ? date.toLocaleDateString(undefined, {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+              })
+            : parsed.identifier}
+        </span>
       </span>
+      {journalNav && (
+        <button
+          type="button"
+          className="sb-dn-journal"
+          title="Later journal entry"
+          aria-label="Later journal entry"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            journalNav.next();
+          }}
+        >
+          &rsaquo;
+        </button>
+      )}
     </span>
   );
 }
@@ -207,10 +280,12 @@ function PageNameEditor({
   pageName,
   readOnly,
   onRename,
+  journalNav,
 }: {
   pageName?: string;
   readOnly: boolean;
   onRename: (newName?: string) => Promise<void>;
+  journalNav?: JournalNav;
 }) {
   const [name, setName] = useState(pageName ?? "");
   // The formatted name is a display; the input underneath stays the one
@@ -241,7 +316,9 @@ function PageNameEditor({
   };
 
   const formatted =
-    !editing && name === pageName ? <DenoteName pageName={name} /> : null;
+    !editing && name === pageName ? (
+      <DenoteName pageName={name} journalNav={journalNav} />
+    ) : null;
 
   return (
     <span
@@ -282,6 +359,7 @@ export function TopBar({
   cssClass,
   mobileMenuStyle,
   readOnly,
+  journalNav,
 }: {
   pageName?: string;
   unsavedChanges: boolean;
@@ -300,6 +378,7 @@ export function TopBar({
   cssClass?: string;
   mobileMenuStyle?: string;
   readOnly: boolean;
+  journalNav?: JournalNav;
 }) {
   return (
     <div id="sb-top" className={isOnline ? undefined : "sb-sync-error"}>
@@ -316,6 +395,7 @@ export function TopBar({
                 pageName={pageName}
                 readOnly={readOnly}
                 onRename={onRename}
+                journalNav={journalNav}
               />
             </span>
             <NotificationPanel

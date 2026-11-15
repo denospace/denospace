@@ -8,6 +8,7 @@ import {
   denoteIdentifierDate,
   denoteLinkDescription,
   isDenoteNoteFile,
+  isJournalEntryName,
   journalDateStamp,
   journalTitle,
   parseLocalDate,
@@ -1636,15 +1637,10 @@ async function journalEntryNamesOn(
   return pages
     .map((page) => page.name)
     .filter((name) => {
-      if (config.directory && !name.startsWith(`${config.directory}/`)) {
+      if (!isJournalEntryName(name, config)) {
         return false;
       }
-      const parsed = parseDenoteName(name);
-      return (
-        !!parsed?.identifier &&
-        parsed.identifier.startsWith(stamp) &&
-        parsed.keywords.includes(config.keyword)
-      );
+      return !!parseDenoteName(name)?.identifier?.startsWith(stamp);
     })
     .sort((a, b) => b.localeCompare(a));
 }
