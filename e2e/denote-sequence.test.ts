@@ -286,6 +286,15 @@ test.describe("Generated pages under denote/", () => {
         "\nSee [[denote:20250101T100001][Hydroponics]].\n",
       [JD_TERM]: org("20250101T100001", "21=01", "Hydroponics", "term"),
       [JD_DIRECT]: org("20250101T100002", "21", "Civic Design", "iteam"),
+      // A second note at the hub address. Harmless to links, which resolve
+      // by identifier -- and the reason a category can start reading as the
+      // wrong name, so health has to surface it.
+      "20250101T100003==21=00--meta.org": org(
+        "20250101T100003",
+        "21=00",
+        "meta",
+        "",
+      ),
       "journal/20250120T123820--monday-20-january-2025__journal.org": org(
         "20250120T123820",
         "",
@@ -307,7 +316,7 @@ test.describe("Generated pages under denote/", () => {
   }) => {
     await gotoSilverBulletPage(sbPage, sbServer, "denote/signatures.org");
     const editor = sbPage.locator("#sb-editor .cm-content");
-    await expect(editor).toContainText("3 notes carry a signature", {
+    await expect(editor).toContainText("4 notes carry a signature", {
       timeout: 20_000,
     });
     await expect(editor).toContainText("21 Civic Design");
@@ -370,6 +379,22 @@ test.describe("Generated pages under denote/", () => {
       /^journal\/20250304T000000--tuesday-4-march-2025.*__journal\.org$/,
       { timeout: 20_000 },
     );
+  });
+
+  test("denote/health reports two notes at one signature", async ({
+    sbPage,
+    sbServer,
+  }) => {
+    // Nothing breaks when two notes share a signature -- links resolve by
+    // identifier -- which is why it goes unnoticed until a category starts
+    // reading as the wrong name. Reported, and hub addresses first.
+    await gotoSilverBulletPage(sbPage, sbServer, "denote/health");
+    const content = sbPage.locator("#sb-editor .cm-content");
+    await expect(content).toContainText("signatures held by more than one", {
+      timeout: 20_000,
+    });
+    await expect(content).toContainText("21=00");
+    await expect(content).toContainText("A category is named by its");
   });
 
   test("denote/health reports a dangling link", async ({

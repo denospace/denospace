@@ -708,6 +708,17 @@ back inline on a phone instead of losing it off the edge.
 * A file that lives in Zotero is **pulled down into the page bundle**, so the
   site never links into a library only you can read.
 
+### Two notes at one signature
+
+`denote/health` reports these now, hub addresses (`NN=00`) first.
+
+It is a quiet fault, which is why it needs reporting. Nothing breaks: links
+resolve by identifier, so every one of them still works. What it breaks is
+*naming* — a category takes its name from its `NN=00` note, so with two of
+them the name depends on which a tool happens to pick, and it changes under
+your feet when one is renamed. That is how `23` came to read as "meta", and
+how renaming a note made `26` relabel itself.
+
 ### Browsing by signature
 
 `Shift-Alt-t` opens the **Signature Browser**, docked left: `debear.el`'s

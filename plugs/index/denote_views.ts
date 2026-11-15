@@ -256,6 +256,25 @@ async function renderHealth(): Promise<string> {
   }
   const duplicates = [...byId.values()].filter((ns) => ns.length > 1);
 
+  // Two notes at one signature is not as loud as two at one identifier --
+  // nothing breaks, links still resolve -- and that is exactly why it goes
+  // unnoticed. What it quietly breaks is naming: a category takes its name
+  // from its `NN=00` note, so with two of them the name depends on which a
+  // tool happens to pick, and it changes under your feet when one is
+  // renamed. Worth reporting for every signature, and `NN=00` first, because
+  // those are the ones a name is read from.
+  const bySignature = new Map<string, DenoteNoteSummary[]>();
+  for (const n of notes) {
+    if (!n.signature) continue;
+    bySignature.set(n.signature, [...(bySignature.get(n.signature) ?? []), n]);
+  }
+  const sharedSignatures = [...bySignature.entries()]
+    .filter(([, ns]) => ns.length > 1)
+    .sort(([a], [b]) => {
+      const hub = (s: string) => (/^\d+=0+$/.test(s) ? 0 : 1);
+      return hub(a) - hub(b) || a.localeCompare(b);
+    });
+
   const dangling = (await index.queryLuaObjects<Relation>(
     "relation",
     {
@@ -303,6 +322,18 @@ async function renderHealth(): Promise<string> {
     "#+title: Library health",
     "",
     `${noteCount} notes. Generated now; reopen to refresh.`,
+    "",
+    `* ${sharedSignatures.length} signatures held by more than one note`,
+    ...(sharedSignatures.length
+      ? [
+          "A category is named by its `NN=00` note, so two of them means the " +
+            "name depends on which is picked.",
+        ]
+      : ["None."]),
+    ...sharedSignatures.flatMap(([signature, ns]) => [
+      `- ${signature}`,
+      ...ns.map((n) => `  - ${pageLink(n.name)} — ${n.title}`),
+    ]),
     "",
     `* ${duplicates.length} identifiers shared by more than one file`,
     ...(duplicates.length ? [] : ["None."]),
