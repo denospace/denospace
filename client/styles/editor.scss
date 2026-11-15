@@ -1466,6 +1466,12 @@ html[data-layout="tufte"] #sb-main .cm-editor {
 html[data-layout="tufte"] {
   --root-background-color: #fffff8;
   --root-color: #111;
+  // The chrome takes the paper too. The site has no bar at all, and a grey
+  // one above ivory draws a line across the top of a view whose whole point
+  // is that it reads as a page -- so the bar's contents float on the paper
+  // instead, which is as close to no bar as there is. This token also backs
+  // the window behind everything, so an overscroll shows paper as well.
+  --top-background-color: #fffff8;
 }
 
 html[data-layout="tufte"][data-theme="dark"] {
@@ -1474,6 +1480,7 @@ html[data-layout="tufte"][data-theme="dark"] {
   // so this is the same paper after nightfall.
   --root-background-color: #151513;
   --root-color: #f0eee4;
+  --top-background-color: #151513;
 }
 
 html[data-layout="tufte"] #sb-main .cm-editor {

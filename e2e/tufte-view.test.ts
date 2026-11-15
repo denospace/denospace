@@ -168,12 +168,19 @@ test.describe("Tufte view", () => {
           .querySelector("#sb-editor .cm-content")!
           .getBoundingClientRect().width,
       ),
-      paper: getComputedStyle(document.documentElement)
-        .getPropertyValue("--root-background-color")
-        .trim(),
+      // What is actually painted, rather than what a token says: the paper
+      // is `#sb-root`, and the bar above it was grey, which drew a line
+      // across the top of a view that is meant to read as a page.
+      paper: getComputedStyle(document.querySelector("#sb-root")!)
+        .backgroundColor,
+      bar: getComputedStyle(document.querySelector("#sb-top")!)
+        .backgroundColor,
+      behind: getComputedStyle(document.body).backgroundColor,
     }));
     expect(page.measure).toBe(672);
-    expect(page.paper).toBe("#fffff8");
+    expect(page.paper).toBe("rgb(255, 255, 248)");
+    expect(page.bar).toBe(page.paper);
+    expect(page.behind).toBe(page.paper);
   });
 
   test("the markup is out of the way until the caret is on it", async ({
