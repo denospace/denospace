@@ -78,7 +78,17 @@ export function hideMarksPlugin() {
 
 // HEADINGS
 
-export function hideHeaderMarkPlugin() {
+/**
+ * `inMargin` is prose view: the leading stars are kept and shown, muted, in
+ * the left margin. Outline view takes them out of the document entirely --
+ * depth is in the indent there, and a second telling of it in the gutter
+ * would only compete with the guide bars.
+ *
+ * Removed rather than hidden with CSS on purpose: CodeMirror measures
+ * positions from DOM rects, and a span with no rect is a span it can place a
+ * caret inside.
+ */
+export function hideHeaderMarkPlugin(inMargin: boolean) {
   return decoratorStateField((state) => {
     const widgets: any[] = [];
     syntaxTree(state).iterate({
@@ -135,10 +145,12 @@ export function hideHeaderMarkPlugin() {
         // branch uses above, so the caret arriving swaps a muted marker for a
         // live one and nothing shifts.
         widgets.push(
-          Decoration.mark({ class: "sb-header-margin" }).range(
-            from,
-            from + spacePos + 1,
-          ),
+          inMargin
+            ? Decoration.mark({ class: "sb-header-margin" }).range(
+                from,
+                from + spacePos + 1,
+              )
+            : invisibleDecoration.range(from, from + spacePos + 1),
         );
       },
     });

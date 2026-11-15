@@ -224,7 +224,7 @@ test.describe("Book layout", () => {
         `editor.invokeCommand("Editor: Toggle Metadata")`,
       );
     });
-    await expect(sbPage.locator("#sb-editor .cm-foldPlaceholder")).toHaveCount(
+    await expect(sbPage.locator("#sb-editor .sb-metadata-fold")).toHaveCount(
       0,
       { timeout: 15_000 },
     );

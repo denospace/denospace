@@ -21,6 +21,11 @@ functions:
     command:
       name: "Editor: Toggle Metadata"
       menu: { location: view, group: "1_toggle", order: 3, label: "Toggle Metadata" }
+  toggleOutlineView:
+    path: "./editor.ts:toggleOutlineView"
+    command:
+      name: "Editor: Toggle Outline View"
+      menu: { location: view, group: "1_toggle", order: 4, label: "Toggle Outline View" }
   toggleMarkdownSyntaxRendering:
     path: "./editor.ts:toggleMarkdownSyntaxRendering"
     command:

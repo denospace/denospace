@@ -352,6 +352,14 @@ export class MainUI {
         : "variable";
     }, [viewState.uiOptions.monospacePitch]);
 
+    useEffect(() => {
+      // The stylesheet keys the whole of the outline arrangement off this:
+      // what indents the text, what hangs in the margin, and whether the
+      // guide hairlines are drawn.
+      document.documentElement.dataset.layout =
+        viewState.uiOptions.editorLayout;
+    }, [viewState.uiOptions.editorLayout]);
+
     // A navigator dock reserves top-bar space the same way a plug's own
     // sidebar panel does, falling back to that panel's mode when no dock is
     // open so nothing changes for a plug that has one.

@@ -27,7 +27,12 @@ export type MetadataBlock = {
 const KEYWORD_LINE = /^#\+[^\s:]+:/;
 
 /**
- * The run of `#+key:` lines a note opens with, if it opens with one.
+ * The run of `#+key:` lines a note opens with, if it opens with one, plus
+ * the blank line that follows it.
+ *
+ * The blank line is taken in on purpose. A fold leaves one line behind
+ * wherever it sits, and taking the blank one with it means that line *is*
+ * the gap above the prose rather than an extra one on top of it.
  *
  * Read from the text rather than the syntax tree: this runs on every page
  * load, the tree may not be parsed that far yet, and the shape being looked
@@ -44,7 +49,19 @@ export function findMetadataBlock(
     if (!KEYWORD_LINE.test(state.doc.line(last + 1).text)) break;
     last++;
   }
+  if (last < state.doc.lines && state.doc.line(last + 1).text.trim() === "") {
+    last++;
+  }
   return { from: state.doc.line(1).from, to: state.doc.line(last).to };
+}
+
+/** Whether a fold range is this document's metadata block. */
+export function isMetadataRange(
+  state: EditorState,
+  range: { from: number; to: number },
+): boolean {
+  const block = findMetadataBlock(state);
+  return !!block && block.from === range.from && block.to === range.to;
 }
 
 /** Whether any selection range sits inside the block. */

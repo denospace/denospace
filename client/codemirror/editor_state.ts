@@ -70,7 +70,10 @@ import {
   frontmatterFoldPlaceholderDOM,
   prepareFrontmatterFoldPlaceholder,
 } from "./frontmatter_folding.ts";
-import { metadataFoldingExtension } from "./metadata_fold.ts";
+import {
+  isMetadataRange,
+  metadataFoldingExtension,
+} from "./metadata_fold.ts";
 
 // Annotation marking a transaction whose changes came from outside the
 // editor's edit stream (e.g. a page re-fetch from storage), so the
@@ -181,9 +184,24 @@ export function createEditorState(
       undoHistory,
       dropCursor(),
       codeFolding({
-        preparePlaceholder: prepareFrontmatterFoldPlaceholder,
-        placeholderDOM: (view, onclick, prepared) =>
-          frontmatterFoldPlaceholderDOM(view, onclick, prepared, client),
+        // A folded metadata block draws nothing at all. Everything it holds
+        // is in the top bar, the toggle command and its button are how it
+        // comes back, and a `…` sitting above every note in the space is a
+        // mark on the page that says what the empty line already says.
+        preparePlaceholder: (state, range) =>
+          isMetadataRange(state, range)
+            ? { type: "metadata" as const }
+            : prepareFrontmatterFoldPlaceholder(state, range),
+        placeholderDOM: (view, onclick, prepared) => {
+          if (prepared.type === "metadata") {
+            // Deliberately not `cm-foldPlaceholder`, whose border and
+            // background are the mark this one exists to not make.
+            const empty = document.createElement("span");
+            empty.className = "sb-metadata-fold";
+            return empty;
+          }
+          return frontmatterFoldPlaceholderDOM(view, onclick, prepared, client);
+        },
       }),
       frontmatterFoldingExtension(client),
       metadataFoldingExtension(client),

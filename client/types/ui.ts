@@ -59,6 +59,15 @@ export type AppViewState = {
      * back at the mercy of how many keywords a note happens to carry.
      */
     foldMetadata: boolean;
+    /**
+     * Which of the two layouts the editor is in.
+     *
+     * `prose` puts every marker in the left margin so the text column has
+     * one edge at every depth -- a page of writing. `outline` is the older
+     * arrangement: each level steps in, with a hairline drawn per level
+     * crossed, so structure is read off the left edge -- a page of notes.
+     */
+    editorLayout: "prose" | "outline";
     forcedROMode: boolean;
     customStyles?: string;
   };
@@ -94,6 +103,7 @@ export const initialViewState: AppViewState = {
     markdownSyntaxRendering: false,
     monospacePitch: false,
     foldMetadata: true,
+    editorLayout: "prose",
     forcedROMode: false,
   },
   isMobile: false,

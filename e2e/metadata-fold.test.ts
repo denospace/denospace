@@ -41,7 +41,7 @@ Prose begins here.
       return {
         // Rounded: the point is that two notes agree, not the exact pixel.
         proseTop: prose ? Math.round(prose.getBoundingClientRect().top) : null,
-        folded: !!document.querySelector("#sb-editor .cm-foldPlaceholder"),
+        folded: !!document.querySelector("#sb-editor .sb-metadata-fold"),
         keysShown: lines.filter((line) =>
           (line.textContent ?? "").startsWith("#+"),
         ).length,

@@ -38,6 +38,10 @@ export async function setEditorMode() {
   if (foldMetadata != null) {
     await editor.setUiOption("foldMetadata", foldMetadata);
   }
+  if ((await clientStore.get("editorLayout")) === "outline") {
+    await editor.setUiOption("editorLayout", "outline");
+    await editor.rebuildEditorState();
+  }
   const markdownSyntaxRendering = await clientStore.get(
     "markdownSyntaxRendering",
   );
@@ -91,6 +95,32 @@ export async function toggleMetadata() {
   await editor.setUiOption("foldMetadata", folded);
   await editor.rebuildEditorState();
   await editor.flashNotification(folded ? "Metadata hidden" : "Metadata shown");
+}
+
+/**
+ * Switches between the two layouts.
+ *
+ * Prose view puts every marker -- heading stars, list bullets, a keyword's
+ * `#+` -- in the left margin, so the text column has one left edge however
+ * deep the line sits, and depth is read off the margin and off heading
+ * weight. It reads like a page.
+ *
+ * Outline view is the older arrangement, kept because the two are good at
+ * different things: each level steps in by a fixed amount with a hairline
+ * drawn per level crossed, so a deep tree can be read off the left edge at a
+ * glance. It reads like notes.
+ */
+export async function toggleOutlineView() {
+  const outline =
+    (await editor.getUiOption("editorLayout")) === "prose"
+      ? "outline"
+      : "prose";
+  await clientStore.set("editorLayout", outline);
+  await editor.setUiOption("editorLayout", outline);
+  await editor.rebuildEditorState();
+  await editor.flashNotification(
+    outline === "outline" ? "Outline view" : "Prose view",
+  );
 }
 
 export async function toggleMarkdownSyntaxRendering() {

@@ -20,6 +20,7 @@ import { htmlBlockPlugin, htmlInlinePlugin } from "./html_widget.ts";
 import { linkPlugin } from "./link.ts";
 import { listBulletPlugin } from "./list.ts";
 import { listIndentPlugin } from "./list_indent.ts";
+import { outlineIndentPlugin } from "./outline_indent.ts";
 import { keywordHangPlugin } from "./keyword_hang.ts";
 import { luaDirectivePlugin } from "./lua_directive.ts";
 import { tablePlugin } from "./table.ts";
@@ -50,7 +51,9 @@ export function cleanModePlugins(client: Client) {
     admonitionPlugin(),
     commentRegionPlugin(client),
     hideMarksPlugin(),
-    hideHeaderMarkPlugin(),
+    hideHeaderMarkPlugin(
+      client.ui.viewState.uiOptions.editorLayout !== "outline",
+    ),
     cleanBlockPlugin(),
     fencedCodePlugin(client),
     taskListPlugin({
@@ -82,6 +85,12 @@ export function cleanModePlugins(client: Client) {
     listBulletPlugin(),
     listIndentPlugin(),
     keywordHangPlugin(),
+    // Only in outline view: depths come from the whole document, so this one
+    // walks the syntax tree on every update, and prose view has no use for
+    // the answer.
+    ...(client.ui.viewState.uiOptions.editorLayout === "outline"
+      ? [outlineIndentPlugin()]
+      : []),
     htmlInlinePlugin(client),
     htmlBlockPlugin(client),
     tablePlugin(client),

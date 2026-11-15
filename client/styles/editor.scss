@@ -120,6 +120,13 @@ $comment-border: 1px;
     // edge otherwise, and a quote's bar breaks at every padded line.
     --sb-line-pad-y: 0px;
 
+    // Outline view only: how far this line's level sits in. Zero here, and
+    // added to the padding by the outline rules at the foot of this file --
+    // not folded into this one's `calc`, which prose view would then pay for
+    // on every line.
+    --sb-outline-depth: 0;
+    --sb-outline-indent: 0px;
+
     // The text column has one left edge, whatever a line's outline depth.
     // That is book-mode's rule -- "text is always aligned" -- and it is why
     // the markers go in a margin instead: depth is read off what hangs in the
@@ -1356,4 +1363,116 @@ $comment-border: 1px;
 .cm-editor:not(.cm-focused) .cm-fat-cursor {
   outline: 1px solid var(--editor-caret-color) !important;
   opacity: 0.5;
+}
+// ---------------------------------------------------------------------------
+// Outline view
+// ---------------------------------------------------------------------------
+//
+// The other of the two layouts, switched by `Editor: Toggle Outline View`.
+// Everything above lays a note out as a page: the markers hang in the left
+// margin and the text column has one edge at every depth. This lays it out as
+// an outline: each level steps in by a fixed amount, a hairline is drawn per
+// level crossed, and the markers go back into the text column where they
+// indent the words after them.
+//
+// It is all here rather than spread through the rules above so that the
+// difference between the two views can be read in one place.
+html[data-layout="outline"] #sb-main .cm-editor {
+  .cm-line {
+    // The step the outline plugin's depth is multiplied by.
+    --sb-outline-indent: calc(
+      var(--sb-outline-depth) * var(--sb-outline-step)
+    );
+    padding-left: calc(var(--sb-indent) + var(--sb-outline-indent));
+
+    // A list marker goes back to indenting its own words: `--sb-indent` is
+    // what the negative text-indent cancels, so putting the marker in it
+    // gives the ordinary hanging list -- marker at the text's left edge,
+    // wrapped rows lining up under the words.
+    --sb-indent: calc(
+      var(--sb-list-nest, 0px) + var(--sb-list-marker) +
+        var(--sb-quote-indent, 0px) + var(--sb-inline-comment-indent, 0px)
+    );
+    // Which leaves only a revealed heading's markers hanging.
+    --sb-hang: var(--sb-header-hang);
+
+    // One hairline per level crossed, in the indent it opened up. Adjacent
+    // lines paint the same x positions, so the marks join into continuous
+    // rules down a subtree -- which is the whole point: depth is read off
+    // the bars rather than off the type.
+    //
+    // On a pseudo-element rather than the line's own background, which a
+    // blockquote's dashed bar already owns.
+    &::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: var(--sb-outline-indent);
+      pointer-events: none;
+      background-image: repeating-linear-gradient(
+        to right,
+        var(--editor-outline-guide-color) 0 1px,
+        transparent 1px var(--sb-outline-step)
+      );
+    }
+  }
+
+  // Markers sit in the text column here, at their own width, rather than in
+  // a box cut to the columns the line hangs back by.
+  .sb-list-marker,
+  .sb-list-space,
+  .sb-keyword-hang,
+  .cm-list-bullet {
+    display: inline;
+    width: auto;
+    text-align: inherit;
+  }
+
+  // The space that puts a `#+` in the stars' column is a prose-view device;
+  // here the sigil is just the first two characters of the line.
+  .sb-keyword-hang::after {
+    content: none;
+  }
+
+  // The stars are taken out of the document here rather than hidden in CSS
+  // -- see `hideHeaderMarkPlugin` -- so there is nothing in the margin to
+  // hang back over unless the caret is on the line and showing them.
+  .cm-line:not(.sb-header-inside) {
+    --sb-header-hang: 0px;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The margin's colour, in prose view
+// ---------------------------------------------------------------------------
+//
+// Everything that hangs in the left margin takes one colour, barely off the
+// paper: the margin is glanced at, the text column is read. Only in prose
+// view -- outline view has no margin, and there these are markup in the text
+// like any other, coloured by the highlighter.
+//
+// The inner spans are named as well as the boxes. The highlighter colours a
+// `*` or a `1.` as `.sb-meta` wherever it sits, at a specificity the box
+// cannot beat from the outside, so a colour set only on the box reaches the
+// space after the marker and not the marker itself -- which is how the
+// heading stars came to be left at the highlighter's grey while a token
+// nobody was reading said otherwise.
+//
+// `:not([data-layout="outline"])` rather than `[data-layout="prose"]`: the
+// attribute is set from JavaScript after the first paint, and prose is the
+// default, so the absence of it has to mean prose.
+html:not([data-layout="outline"]) #sb-main .cm-editor {
+  .sb-header-margin,
+  .sb-header-margin .sb-meta,
+  .sb-list-marker,
+  .sb-list-marker .sb-meta,
+  .sb-list-space,
+  .cm-list-bullet,
+  .sb-keyword-hang,
+  .sb-keyword-hang .sb-meta,
+  .sb-keyword-hang .sb-attribute-name {
+    color: var(--editor-margin-color);
+  }
 }

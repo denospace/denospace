@@ -191,8 +191,16 @@ html {
   --top-keyword-background-color: #fbeae8;
   --top-keyword-color: #a3251d;
   --top-identifier-color: #9b938a;
-  // Heading stars in the margin: countable, not readable.
-  --editor-heading-margin-color: #c9c1b6;
+  // Everything in the left margin -- heading stars, list bullets, the `#+`
+  // of a keyword -- in one colour: countable, not readable. Barely a shade
+  // off the paper, because the margin is there to be glanced at and the
+  // text column is what is being read.
+  --editor-margin-color: #d4cec4;
+  --editor-heading-margin-color: var(--editor-margin-color);
+
+  // Outline view: one step per level, and the hairline drawn in it.
+  --sb-outline-step: 1.1rem;
+  --editor-outline-guide-color: #e6dfd7;
 
   // An open state carries the accent; a finished one goes quiet.
   --editor-org-todo-background-color: #d1342a;
@@ -261,7 +269,9 @@ html[data-theme="dark"] {
   --top-keyword-background-color: #3a211e;
   --top-keyword-color: #f8968d;
   --top-identifier-color: #847b71;
-  --editor-heading-margin-color: #4a443d;
+  --editor-margin-color: #3a3530;
+  --editor-heading-margin-color: var(--editor-margin-color);
+  --editor-outline-guide-color: #332e2a;
 
 
   --editor-org-todo-background-color: #f2675a;
