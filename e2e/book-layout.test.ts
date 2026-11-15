@@ -33,23 +33,32 @@ test.describe("Book layout", () => {
     },
   });
 
-  /** The x where each line's first glyph actually starts. */
+  /**
+   * The x where each line's *text* starts -- skipping anything in the margin,
+   * which is the whole point of the layout: the markers are outside the text
+   * column, so a measurement that included them would measure the margin.
+   */
   const edges = (page: any) =>
     page.evaluate(() => {
       const out: Record<string, number> = {};
       for (const line of document.querySelectorAll("#sb-editor .cm-line")) {
-        const text = (line.textContent ?? "").trim();
-        if (!text) continue;
         const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
         let node: Node | null;
         while ((node = walker.nextNode())) {
+          if (
+            (node.parentElement as Element | null)?.closest(
+              ".sb-header-margin, .cm-list-bullet, .sb-li-cursor",
+            )
+          ) {
+            continue;
+          }
           const value = (node.textContent ?? "").replace(/^\s+/, "");
           if (!value) continue;
           const idx = (node.textContent ?? "").length - value.length;
           const range = document.createRange();
           range.setStart(node, idx);
           range.setEnd(node, idx + 1);
-          out[text.slice(0, 22)] = range.getBoundingClientRect().left;
+          out[value.trim().slice(0, 22)] = range.getBoundingClientRect().left;
           break;
         }
       }
@@ -89,6 +98,55 @@ test.describe("Book layout", () => {
       return { image: before.backgroundImage, width: before.width };
     });
     expect(guide.image === "none" || guide.width === "0px").toBe(true);
+  });
+
+  test("heading stars sit muted in the margin, in one column", async ({
+    sbPage,
+    sbServer,
+  }) => {
+    await gotoSilverBulletPage(sbPage, sbServer, "20261115T090000--book.org");
+    await expect(sbPage.locator("#sb-editor .cm-content")).toContainText(
+      "Body of delta.",
+      { timeout: 20_000 },
+    );
+    const margin = await sbPage.evaluate(() => {
+      const out: {
+        text: string;
+        right: number;
+        colour: string;
+        weight: string;
+      }[] = [];
+      for (const el of document.querySelectorAll(
+        "#sb-editor .sb-header-margin",
+      )) {
+        const s = getComputedStyle(el);
+        out.push({
+          text: (el.textContent ?? "").trim(),
+          right: Math.round(el.getBoundingClientRect().right * 10) / 10,
+          colour: s.color,
+          weight: s.fontWeight,
+        });
+      }
+      const body = document.querySelector("#sb-editor .cm-line")!;
+      return { margin: out, bodyColour: getComputedStyle(body).color };
+    });
+    // One per heading, showing its own depth.
+    expect(margin.margin.map((m) => m.text)).toEqual([
+      "*",
+      "**",
+      "***",
+      "****",
+    ]);
+    // Right-aligned into one column: every run ends at the same x, however
+    // many stars it has. That is what keeps the text edge still.
+    const rights = margin.margin.map((m) => m.right);
+    for (const r of rights) {
+      expect(Math.abs(r - rights[0])).toBeLessThan(1.5);
+    }
+    // Muted by colour. Deliberately *not* by weight: the hang is in `ch`,
+    // and a lighter weight changes what `ch` measures, so the box and the
+    // indent stop agreeing and the heading text slides a pixel or two.
+    expect(margin.margin[0].colour).not.toEqual(margin.bodyColour);
   });
 
   test("list numbers of different widths leave text at the same edge", async ({

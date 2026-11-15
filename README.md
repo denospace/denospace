@@ -833,8 +833,19 @@ text edge is constant.
 One size throughout, weight for the hierarchy: 700, 600, 500, then body copy
 from the fourth level on, where a heading is a label on a passage.
 
-`--sb-gutter` (2.6ch) is the margin's width — wide enough for three heading
-stars or a two-digit list number.
+Heading stars sit in that margin too, muted — `*`, `**`, `***` — so depth is
+countable without reading. They are right-aligned, so every level's run ends
+at the text edge and one column holds them all. The caret arriving swaps the
+muted marker for a live one and **nothing moves**, because both are boxed to
+the same hang.
+
+Muted by colour and not by weight, for a measurable reason: the hang is
+expressed in `ch`, a lighter weight changes what `ch` measures, and the box
+and the indent then disagree by a pixel or two — which is a heading that
+slides as you click it.
+
+`--sb-gutter` (2.6ch) is the margin's width for list markers;
+`--editor-heading-margin-color` is the muted tone.
 
 This replaced a stepped indent with one hairline guide per level crossed.
 That read well in a code editor and badly in prose: deep content started a

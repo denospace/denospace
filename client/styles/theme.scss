@@ -191,6 +191,8 @@ html {
   --top-keyword-background-color: #fbeae8;
   --top-keyword-color: #a3251d;
   --top-identifier-color: #9b938a;
+  // Heading stars in the margin: countable, not readable.
+  --editor-heading-margin-color: #c9c1b6;
 
   // An open state carries the accent; a finished one goes quiet.
   --editor-org-todo-background-color: #d1342a;
@@ -259,6 +261,7 @@ html[data-theme="dark"] {
   --top-keyword-background-color: #3a211e;
   --top-keyword-color: #f8968d;
   --top-identifier-color: #847b71;
+  --editor-heading-margin-color: #4a443d;
 
 
   --editor-org-todo-background-color: #f2675a;

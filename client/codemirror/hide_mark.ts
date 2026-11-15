@@ -129,7 +129,17 @@ export function hideHeaderMarkPlugin() {
           // Not complete header
           return;
         }
-        widgets.push(invisibleDecoration.range(from, from + spacePos + 1));
+        // Shown rather than hidden: the stars live in the left margin, muted,
+        // which is `book-mode`'s arrangement -- depth is legible without the
+        // heading text moving for it. Boxed to the same hang the cursor-in
+        // branch uses above, so the caret arriving swaps a muted marker for a
+        // live one and nothing shifts.
+        widgets.push(
+          Decoration.mark({ class: "sb-header-margin" }).range(
+            from,
+            from + spacePos + 1,
+          ),
+        );
       },
     });
     return Decoration.set(widgets, true);
