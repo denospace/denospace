@@ -1,5 +1,10 @@
 import type { Page } from "@playwright/test";
-import { expect, test, waitForSaveAndReadFromServer } from "./fixtures.ts";
+import {
+  expect,
+  showMetadata,
+  test,
+  waitForSaveAndReadFromServer,
+} from "./fixtures.ts";
 import { currentPage, runCommandViaPalette } from "./navigator-ui.ts";
 
 // This file exercises the journalling workflow end-to-end. In this fork the
@@ -28,6 +33,9 @@ async function openedEntry(sbPage: Page): Promise<string> {
 async function runJournalToday(sbPage: Page): Promise<void> {
   const editor = sbPage.locator("#sb-editor .cm-content");
   await expect(editor).toContainText("Welcome");
+  // These tests read a journal entry's front matter off the screen, and the
+  // editor folds it away by default.
+  await showMetadata(sbPage);
 
   // The command defined by the Journal template has to be there to lead the
   // list, which is what the helper asserts before pressing Enter.

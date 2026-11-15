@@ -1,4 +1,9 @@
-import { expect, gotoSilverBulletPage, test } from "./fixtures.ts";
+import {
+  expect,
+  gotoSilverBulletPage,
+  showMetadata,
+  test,
+} from "./fixtures.ts";
 import { currentPage } from "./navigator-ui.ts";
 
 // A Better BibTeX export, as written: braces, escapes, storage paths.
@@ -494,6 +499,7 @@ test.describe("Zotero: adding a file", () => {
     sbServer,
   }) => {
     await gotoSilverBulletPage(sbPage, sbServer, "Paste.org");
+    await showMetadata(sbPage);
     const editor = sbPage.locator("#sb-editor .cm-content");
     await expect(editor).toContainText("Before.");
     await sbPage.waitForTimeout(2500); // config to settle
@@ -1204,6 +1210,7 @@ test.describe("Zotero: keywords on a note SilverBullet made", () => {
       sbServer,
       "20261005T093900--paper__bib.org",
     );
+    await showMetadata(sbPage);
     await expect(sbPage.locator("#sb-editor .cm-content")).toContainText(
       "paper.pdf",
       { timeout: 20_000 },

@@ -1,5 +1,11 @@
 import { readFileSync } from "node:fs";
-import { expect, gotoSilverBulletPage, mod, test } from "./fixtures.ts";
+import {
+  expect,
+  gotoSilverBulletPage,
+  mod,
+  showMetadata,
+  test,
+} from "./fixtures.ts";
 import {
   currentPage,
   navInput,
@@ -52,6 +58,7 @@ test.describe("Denote library", () => {
     sbServer,
   }) => {
     await gotoSilverBulletPage(sbPage, sbServer, HUB);
+    await showMetadata(sbPage);
     const editor = sbPage.locator("#sb-editor .cm-content");
     await expect(editor).toContainText("Issues of Law");
 
@@ -84,9 +91,7 @@ test.describe("Denote library", () => {
     // resolve to nothing and must be visibly dangling rather than silently
     // rendered as working links.
     await expect(
-      sbPage
-        .locator("#sb-editor .sb-denote-link.sb-wiki-link-missing")
-        .first(),
+      sbPage.locator("#sb-editor .sb-denote-link.sb-wiki-link-missing").first(),
     ).toBeVisible({ timeout: 10_000 });
   });
 
@@ -219,6 +224,7 @@ test.describe("Renaming a Denote note", () => {
     sbServer,
   }) => {
     await gotoSilverBulletPage(sbPage, sbServer, COSTS);
+    await showMetadata(sbPage);
     const renamed =
       "20240125T164237==1a--court-costs-renamed__costs_updated.org";
     // Fire the command without awaiting: it blocks on its own prompt, which
@@ -266,6 +272,7 @@ test.describe("Following a Denote link by keyboard", () => {
     sbServer,
   }) => {
     await gotoSilverBulletPage(sbPage, sbServer, HUB);
+    await showMetadata(sbPage);
     await expect(sbPage.locator("#sb-editor .cm-content")).toContainText(
       "Issues of Law",
     );
@@ -349,6 +356,7 @@ test.describe("Creating a Denote note", () => {
     sbServer,
   }) => {
     await gotoSilverBulletPage(sbPage, sbServer, "index");
+    await showMetadata(sbPage);
     await runCommand(sbPage, "Denote: New Note");
     await answer(sbPage, "Kiemle & Hagood Company v. Daniels");
     // The keyword picker completes over keywords already in the space; a new
@@ -417,6 +425,7 @@ test.describe("Creating a Denote note", () => {
     sbServer,
   }) => {
     await gotoSilverBulletPage(sbPage, sbServer, "index");
+    await showMetadata(sbPage);
     await runCommand(sbPage, "Denote: New Note with Signature");
     await answer(sbPage, "Nature of Unlawful Detainer");
     await newKeyword(sbPage, "ud");
@@ -481,6 +490,7 @@ test.describe("Front matter drives the file name", () => {
     sbServer,
   }) => {
     await gotoSilverBulletPage(sbPage, sbServer, COSTS);
+    await showMetadata(sbPage);
     await expect(sbPage.locator("#sb-editor .cm-content")).toContainText(
       "Court Costs Relating to Evictions",
     );
@@ -778,6 +788,7 @@ test.describe("Inserting dynamic blocks", () => {
   }) => {
     // The hub links to COSTS, so a backlinks block on COSTS finds it.
     await gotoSilverBulletPage(sbPage, sbServer, COSTS);
+    await showMetadata(sbPage);
     await expect(sbPage.locator("#sb-editor .cm-content")).toContainText(
       "Court Costs",
       { timeout: 20_000 },
@@ -865,6 +876,7 @@ test.describe("Open or create", () => {
     // phrase, which made `Motion To Dismiss.md`: no identifier, outside the
     // naming scheme, and unreachable by every `denote:` link.
     await gotoSilverBulletPage(sbPage, sbServer, COSTS);
+    await showMetadata(sbPage);
     const frame = await openPagePicker(sbPage);
     await navInput(sbPage).fill("Motion To Dismiss");
     await expect(frame.locator(".sb-nav-create .sb-nav-primary")).toHaveText(
@@ -923,6 +935,7 @@ test.describe("Link or create", () => {
     sbServer,
   }) => {
     await gotoSilverBulletPage(sbPage, sbServer, COSTS);
+    await showMetadata(sbPage);
     const editor = sbPage.locator("#sb-editor .cm-content");
     await expect(editor).toContainText("Court Costs");
     await editor.click();
@@ -1220,6 +1233,7 @@ test.describe("denote-journal", () => {
     sbServer,
   }) => {
     await gotoSilverBulletPage(sbPage, sbServer, COSTS);
+    await showMetadata(sbPage);
     await expect(sbPage.locator("#sb-editor .cm-content")).toContainText(
       "Court Costs",
     );
@@ -1240,6 +1254,7 @@ test.describe("denote-journal", () => {
     sbServer,
   }) => {
     await gotoSilverBulletPage(sbPage, sbServer, COSTS);
+    await showMetadata(sbPage);
     await expect(sbPage.locator("#sb-editor .cm-content")).toContainText(
       "Court Costs",
     );

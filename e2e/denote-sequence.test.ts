@@ -1,5 +1,10 @@
 import { readFileSync } from "node:fs";
-import { expect, gotoSilverBulletPage, test } from "./fixtures.ts";
+import {
+  expect,
+  gotoSilverBulletPage,
+  showMetadata,
+  test,
+} from "./fixtures.ts";
 import { currentPage } from "./navigator-ui.ts";
 
 // The same real Denote library denote.test.ts uses; these notes carry the
@@ -198,6 +203,7 @@ test.describe("Signatures as a sequence", () => {
     // A picker that only returns rows it already has would leave it typed and
     // unaccepted, which is how this went wrong.
     await gotoSilverBulletPage(sbPage, sbServer, JD_DIRECT);
+    await showMetadata(sbPage);
     await runCommand(sbPage, "Denote: Add Keywords");
     const filter = sbPage
       .locator(".sb-modal-box input, .sb-modal input")
@@ -234,6 +240,7 @@ test.describe("Signatures as a sequence", () => {
     // page under the old name. That is not an error, and must not look like
     // one.
     await gotoSilverBulletPage(sbPage, sbServer, JD_TERM);
+    await showMetadata(sbPage);
     await runCommand(sbPage, "Denote: Add Keywords");
     const filter = sbPage
       .locator(".sb-modal-box input, .sb-modal input")
@@ -315,6 +322,7 @@ test.describe("Generated pages under denote/", () => {
     sbServer,
   }) => {
     await gotoSilverBulletPage(sbPage, sbServer, "denote/signatures.org");
+    await showMetadata(sbPage);
     const editor = sbPage.locator("#sb-editor .cm-content");
     await expect(editor).toContainText("4 notes carry a signature", {
       timeout: 20_000,

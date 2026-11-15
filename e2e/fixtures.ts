@@ -3,7 +3,11 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import net from "node:net";
 import { platform, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { test as base, type Page } from "@playwright/test";
+import {
+  expect as playwrightExpect,
+  test as base,
+  type Page,
+} from "@playwright/test";
 
 /** The platform-appropriate modifier key: Meta on macOS, Control elsewhere. */
 export const mod = platform() === "darwin" ? "Meta" : "Control";
@@ -248,6 +252,35 @@ export async function waitForEditorReady(page: Page): Promise<void> {
     undefined,
     { timeout: 15_000 },
   );
+}
+
+/**
+ * Shows the `#+key:` block, which the editor folds away by default.
+ *
+ * A test that reads a note's front matter off the screen -- or that waits
+ * for a title which only appears there -- has to ask for it first. The
+ * setting is per device, so once per test is enough however many pages it
+ * then visits.
+ */
+export async function showMetadata(page: Page): Promise<void> {
+  await waitForEditorReady(page);
+  // The setting rather than the page: called from a Markdown page -- which
+  // has no `#+key:` block to fold -- looking for a fold on screen finds
+  // none and concludes, wrongly, that there is nothing to do.
+  const folded = () =>
+    page.evaluate(
+      () => (globalThis as any).client.ui.viewState.uiOptions.foldMetadata,
+    );
+  const shown = async () => !(await folded());
+  if (await shown()) {
+    return;
+  }
+  await page.evaluate(() => {
+    void (globalThis as any).sbRuntime.evalLuaScript(
+      `editor.invokeCommand("Editor: Toggle Metadata")`,
+    );
+  });
+  await playwrightExpect.poll(shown, { timeout: 15_000 }).toBe(true);
 }
 
 export { expect } from "@playwright/test";
