@@ -111,7 +111,7 @@ $comment-border: 1px;
     // column, ending at its left edge. Summed so a line can only ever have
     // one of the two.
     --sb-list-marker: 0px;
-    // An Org keyword's `#+key:` and the padding after it.
+    // The `#+` an Org keyword opens with.
     --sb-keyword-hang: 0px;
     --sb-hang: calc(var(--sb-header-hang) + var(--sb-list-marker) + var(--sb-keyword-hang));
 
@@ -330,10 +330,9 @@ $comment-border: 1px;
     overflow: visible;
   }
 
-  // `#+key:` and its padding, boxed to the columns the line hangs back by so
-  // the value lands on the text edge. Left-aligned inside the box, because
-  // `#+identifier:` is half again as long as `#+title:` and one shared
-  // column would either clip the longer or strand the shorter.
+  // The `#+`, boxed to the columns the line hangs back by so that the key
+  // itself lands on the text edge. The key is part of what the line says;
+  // only the sigil in front of it is markup.
   .sb-keyword-hang {
     display: inline-block;
     width: var(--sb-keyword-hang);

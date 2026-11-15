@@ -4,19 +4,14 @@ import { syntaxTree } from "@codemirror/language";
 import { decoratorStateField } from "./util.ts";
 
 /**
- * Hangs an Org keyword's `#+key:` in the left margin, so its **value** starts
+ * Hangs an Org keyword's leading `#+` in the left margin, so the key starts
  * where every other line's text starts.
  *
- * Same arrangement as a heading's stars and a list's bullet: what is markup
- * goes in the margin, what is content sits in the text column. Denote already
- * pads these lines so the values line up with each other -- this is what
- * lines them up with the prose below as well.
- *
- * The run hangs at its natural width rather than being right-aligned to a
- * fixed column: `#+identifier:` is half again as long as `#+title:`, and
- * forcing them into one box would either clip the longer or strand the
- * shorter. Left-aligned in the margin, every value still lands on the edge,
- * which is the part that matters.
+ * Same arrangement as a heading's stars and a list's bullet: the sigil that
+ * says what kind of line this is goes in the margin, and the line itself
+ * sits in the text column. Only the `#+` goes -- `title:` is part of what
+ * the line says, not punctuation announcing it, and Denote's padding already
+ * lines the values up with each other.
  */
 export function keywordHangPlugin() {
   return decoratorStateField((state) => {
@@ -28,16 +23,11 @@ export function keywordHangPlugin() {
         // Only a line that *is* the keyword: an inline `#+` inside a block
         // has no margin to hang into.
         if (line.from !== from) return;
-        const value = node.getChild("OrgKeywordValue");
-        // Where the value begins, or -- for a keyword with no value -- the end
-        // of the run, so an empty `#+filetags:` hangs like its neighbours
-        // instead of jumping back into the column.
-        const marks = node.getChildren("OrgKeywordMark");
-        const colon = marks.length ? marks[marks.length - 1].to : node.to;
-        const valueFrom = value
-          ? value.from
-          : lastNonSpace(state, colon, line.to);
-        const columns = valueFrom - line.from;
+        // The run's marks are `#+` and the closing `:`; the first is the one
+        // that belongs in the margin.
+        const sigil = node.getChildren("OrgKeywordMark")[0];
+        if (!sigil || sigil.from !== line.from) return;
+        const columns = sigil.to - line.from;
         if (columns <= 0) return;
         widgets.push(
           Decoration.line({
@@ -47,26 +37,11 @@ export function keywordHangPlugin() {
         widgets.push(
           Decoration.mark({ class: "sb-keyword-hang" }).range(
             line.from,
-            valueFrom,
+            sigil.to,
           ),
         );
       },
     });
     return Decoration.set(widgets, true);
   });
-}
-
-/**
- * Past the colon, skipping the padding Denote writes. Used when a keyword has
- * no value: the run then ends where a value would have started, so an empty
- * line hangs by the same amount as a full one.
- */
-function lastNonSpace(
-  state: { doc: { sliceString: (a: number, b: number) => string } },
-  from: number,
-  to: number,
-): number {
-  const text = state.doc.sliceString(from, to);
-  const match = /^[ \t]*/.exec(text);
-  return from + (match ? match[0].length : 0);
 }

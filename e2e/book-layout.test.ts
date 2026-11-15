@@ -205,13 +205,13 @@ test.describe("Book layout", () => {
     expect(at[nested]).toBeLessThan(base + 20);
   });
 
-  test("front matter values land on the text edge too", async ({
+  test("front matter hangs its `#+`, and nothing else", async ({
     sbPage,
     sbServer,
   }) => {
-    // `#+key:` is markup, so it hangs; the value is content, so it sits in
-    // the column. Denote already pads these lines so the values line up with
-    // each other -- this is what lines them up with the prose below.
+    // The `#+` is the sigil that says what kind of line this is, so it goes
+    // in the margin with the heading stars and the bullets. The key is part
+    // of what the line says, so it starts on the edge with the prose.
     await gotoSilverBulletPage(sbPage, sbServer, "20261115T090000--book.org");
     await expect(sbPage.locator("#sb-editor .cm-content")).toContainText(
       "Preamble",
@@ -219,16 +219,22 @@ test.describe("Book layout", () => {
     );
     const at = await edges(sbPage);
     const base = at["Preamble before any se"];
-    // `#+title:` and `#+identifier:` are different lengths; both values land
-    // on the edge regardless.
-    for (const key of ["Book", "20261115T090000"]) {
+    for (const key of ["title", "identifier"]) {
       const found = Object.keys(at).find((k) => k.startsWith(key));
-      expect(
-        found,
-        `no value starting ${key}: ${Object.keys(at)}`,
-      ).toBeTruthy();
+      expect(found, `no key starting ${key}: ${Object.keys(at)}`).toBeTruthy();
       expect(Math.abs(at[found!] - base)).toBeLessThan(1);
     }
+
+    // And the `#+` itself is out in the margin, left of that edge.
+    const sigil = await sbPage.evaluate(() => {
+      const el = document.querySelector("#sb-editor .sb-keyword-hang")!;
+      return {
+        text: el.textContent,
+        left: el.getBoundingClientRect().left,
+      };
+    });
+    expect(sigil.text).toBe("#+");
+    expect(sigil.left).toBeLessThan(base - 1);
   });
 
   test("a task's checkbox sits at the text edge, not in the margin", async ({
