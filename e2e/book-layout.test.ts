@@ -225,16 +225,45 @@ test.describe("Book layout", () => {
       expect(Math.abs(at[found!] - base)).toBeLessThan(1);
     }
 
-    // And the `#+` itself is out in the margin, left of that edge.
-    const sigil = await sbPage.evaluate(() => {
-      const el = document.querySelector("#sb-editor .sb-keyword-hang")!;
+    // And the `#+` is out in the margin, right-aligned into the same column
+    // the heading stars sit in -- one ragged-right edge of markup, not two.
+    const margin = await sbPage.evaluate(() => {
+      // The right edge of the glyphs themselves, which is not the right edge
+      // of the box: a heading's box holds its trailing space too.
+      const glyphRight = (el: Element) => {
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+        let node: Node | null;
+        let right: number | null = null;
+        while ((node = walker.nextNode())) {
+          const trimmed = (node.textContent ?? "").replace(/\s+$/, "");
+          if (!trimmed) continue;
+          const range = document.createRange();
+          range.setStart(node, 0);
+          range.setEnd(node, trimmed.length);
+          right = range.getBoundingClientRect().right;
+        }
+        return right;
+      };
+      const all = (selector: string) =>
+        [...document.querySelectorAll(`#sb-editor ${selector}`)].map(
+          glyphRight,
+        );
       return {
-        text: el.textContent,
-        left: el.getBoundingClientRect().left,
+        text: document.querySelector("#sb-editor .sb-keyword-hang")!
+          .textContent,
+        sigils: all(".sb-keyword-hang"),
+        stars: all(".sb-header-margin"),
       };
     });
-    expect(sigil.text).toBe("#+");
-    expect(sigil.left).toBeLessThan(base - 1);
+    expect(margin.text).toBe("#+");
+    expect(margin.sigils.length).toBeGreaterThan(1);
+    expect(margin.stars.length).toBeGreaterThan(1);
+    for (const right of [...margin.sigils, ...margin.stars]) {
+      expect(right).not.toBeNull();
+      // In the margin, and in the same column as each other.
+      expect(right!).toBeLessThan(base);
+      expect(Math.abs(right! - margin.stars[0]!)).toBeLessThan(1);
+    }
   });
 
   test("a task's checkbox sits at the text edge, not in the margin", async ({

@@ -338,6 +338,19 @@ $comment-border: 1px;
     width: var(--sb-keyword-hang);
     white-space: pre;
     overflow: visible;
+    // An inline-block inherits the line's `text-indent`, which here is a
+    // large negative number -- left to itself the `#+` renders a column and
+    // a half left of its own box.
+    text-indent: 0;
+    text-align: right;
+
+    // A heading's box holds `* `, space and all, so its stars stop one
+    // space short of the text edge. `#+title:` has no such space in the
+    // document, and this is the space that puts the two sigils in one
+    // right-aligned column rather than a column apart.
+    &::after {
+      content: " ";
+    }
   }
 
   // The gap between an unordered bullet and its words. One column, so the
