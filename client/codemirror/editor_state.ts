@@ -70,6 +70,7 @@ import {
   frontmatterFoldPlaceholderDOM,
   prepareFrontmatterFoldPlaceholder,
 } from "./frontmatter_folding.ts";
+import { metadataFoldingExtension } from "./metadata_fold.ts";
 
 // Annotation marking a transaction whose changes came from outside the
 // editor's edit stream (e.g. a page re-fetch from storage), so the
@@ -185,6 +186,7 @@ export function createEditorState(
           frontmatterFoldPlaceholderDOM(view, onclick, prepared, client),
       }),
       frontmatterFoldingExtension(client),
+      metadataFoldingExtension(client),
       indentUnits,
       indentOnInput(),
       ...cleanModePlugins(client),

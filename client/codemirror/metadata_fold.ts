@@ -1,0 +1,172 @@
+import { foldedRanges, foldEffect, unfoldEffect } from "@codemirror/language";
+import type { EditorState, Extension } from "@codemirror/state";
+import { type EditorView, ViewPlugin, type ViewUpdate } from "@codemirror/view";
+import type { Client } from "../client.ts";
+
+/**
+ * Folds a note's `#+key:` block away, so every note's prose starts at the
+ * same height.
+ *
+ * Denote writes the title, the date, the identifier, the signature and the
+ * keywords into the head of each file, and the top bar already shows the
+ * ones a reader wants. Five lines saying it a second time is a lot of a
+ * screen -- and worse, a *varying* amount, so the first line of prose sits
+ * somewhere different in every note.
+ *
+ * Folded is a per-device setting rather than per note, which is the whole
+ * point: a fold the reader has to keep re-making is a fold that keeps
+ * moving the text.
+ */
+
+export type MetadataBlock = {
+  from: number;
+  to: number;
+};
+
+/** An Org keyword line: `#+key:`, with or without a value. */
+const KEYWORD_LINE = /^#\+[^\s:]+:/;
+
+/**
+ * The run of `#+key:` lines a note opens with, if it opens with one.
+ *
+ * Read from the text rather than the syntax tree: this runs on every page
+ * load, the tree may not be parsed that far yet, and the shape being looked
+ * for is exactly the shape of the file's first lines.
+ */
+export function findMetadataBlock(
+  state: EditorState,
+): MetadataBlock | undefined {
+  if (!KEYWORD_LINE.test(state.doc.line(1).text)) {
+    return;
+  }
+  let last = 1;
+  while (last < state.doc.lines) {
+    if (!KEYWORD_LINE.test(state.doc.line(last + 1).text)) break;
+    last++;
+  }
+  return { from: state.doc.line(1).from, to: state.doc.line(last).to };
+}
+
+/** Whether any selection range sits inside the block. */
+export function selectionInside(
+  state: EditorState,
+  from: number,
+  to: number,
+): boolean {
+  return state.selection.ranges.some((range) =>
+    range.empty
+      ? range.from >= from && range.from <= to
+      : range.from <= to && range.to >= from,
+  );
+}
+
+/**
+ * Where the cursor goes when the block it was in is folded away: the start
+ * of the line after it, which is where a note's body begins.
+ *
+ * A page opens with the cursor at position 0, which is inside the block --
+ * so a fold that stood aside for the cursor would never happen at all. It
+ * takes the cursor with it instead.
+ */
+export function positionAfter(state: EditorState, to: number): number {
+  return Math.min(to + 1, state.doc.length);
+}
+
+/** Whether a fold already covers the whole of `from`..`to`. */
+export function isFolded(
+  state: EditorState,
+  from: number,
+  to: number,
+): boolean {
+  let covered = false;
+  foldedRanges(state).between(from, to, (rangeFrom, rangeTo) => {
+    if (rangeFrom <= from && rangeTo >= to) {
+      covered = true;
+      return false;
+    }
+  });
+  return covered;
+}
+
+export function metadataFoldingExtension(client: Client): Extension {
+  return ViewPlugin.fromClass(
+    class {
+      private destroyed = false;
+      /**
+       * Set once the reader opens the block themselves. Renaming a note
+       * rewrites its front matter, which replaces the folded range and so
+       * drops the fold -- the block would spring open mid-sentence, which is
+       * exactly the jumping around the fold exists to stop. So it is put
+       * back; but not over someone who asked to see it.
+       */
+      private opened = false;
+
+      constructor(private view: EditorView) {
+        // After the first render, so the fold lands on a state the view has
+        // already measured -- the same thing the Markdown front matter fold
+        // does, and for the same reason.
+        queueMicrotask(() => {
+          if (this.destroyed) return;
+          this.fold();
+        });
+      }
+
+      update(update: ViewUpdate): void {
+        // This runs on every keystroke, so the two settings that make the
+        // rest of it pointless are read first.
+        if (this.opened) return;
+        if (!client.ui.viewState.uiOptions.foldMetadata) return;
+
+        const unfolds = update.transactions.flatMap((tr) =>
+          tr.effects.filter((effect) => effect.is(unfoldEffect)),
+        );
+        if (unfolds.length > 0) {
+          const block = findMetadataBlock(update.state);
+          if (
+            block &&
+            unfolds.some(
+              (effect) =>
+                effect.value.from <= block.to && effect.value.to >= block.from,
+            )
+          ) {
+            this.opened = true;
+            return;
+          }
+        }
+
+        if (!update.docChanged) return;
+        const block = findMetadataBlock(update.state);
+        if (!block) return;
+        if (isFolded(update.state, block.from, block.to)) return;
+        if (selectionInside(update.state, block.from, block.to)) return;
+        // Out of the update cycle: a dispatch from inside `update` is an
+        // error in CodeMirror.
+        queueMicrotask(() => {
+          if (this.destroyed) return;
+          this.fold();
+        });
+      }
+
+      destroy(): void {
+        this.destroyed = true;
+      }
+
+      private fold(): void {
+        if (!client.ui.viewState.uiOptions.foldMetadata) return;
+        const state = this.view.state;
+        const block = findMetadataBlock(state);
+        if (!block) return;
+        if (isFolded(state, block.from, block.to)) return;
+        const anchor = positionAfter(state, block.to);
+        this.view.dispatch({
+          effects: foldEffect.of({ from: block.from, to: block.to }),
+          // A cursor left inside a folded range would be typing into text
+          // nobody can see.
+          selection: selectionInside(state, block.from, block.to)
+            ? { anchor }
+            : undefined,
+        });
+      }
+    },
+  );
+}

@@ -217,6 +217,17 @@ test.describe("Book layout", () => {
       "Preamble",
       { timeout: 20_000 },
     );
+    // Shown rather than folded away, which is how it is read by default --
+    // this is about where the lines sit when they are on screen.
+    await sbPage.evaluate(() => {
+      void (globalThis as any).sbRuntime.evalLuaScript(
+        `editor.invokeCommand("Editor: Toggle Metadata")`,
+      );
+    });
+    await expect(sbPage.locator("#sb-editor .cm-foldPlaceholder")).toHaveCount(
+      0,
+      { timeout: 15_000 },
+    );
     const at = await edges(sbPage);
     const base = at["Preamble before any se"];
     for (const key of ["title", "identifier"]) {

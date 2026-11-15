@@ -508,6 +508,20 @@ config.set("actionButtons", {
     command = "Open Command Palette",
     priority = 1,
   },
+  -- The `#+key:` block is hidden by default, because the top bar already
+  -- says what it says. This is the way back to it when the title or the
+  -- keywords need changing.
+  --
+  -- Not on the phone: measured at 390px, a fifth icon takes 32px off a
+  -- title that only has 170 to begin with, and front matter is not what
+  -- a phone is for. The command palette still has it.
+  {
+    icon = "info",
+    description = "Show or hide this note's metadata",
+    command = "Editor: Toggle Metadata",
+    mobile = false,
+    priority = 0.5,
+  },
   -- Today's journal entry, made if it is not there yet. The one page a
   -- journal-keeping library opens more than any other, so it gets a button
   -- rather than a command palette round trip.

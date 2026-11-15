@@ -216,16 +216,6 @@
         color: var(--top-keyword-color);
       }
 
-      // Last and quietest: an identity, not a label. The full file name is on
-      // its tooltip for when it is the file you actually want.
-      .sb-dn-identifier {
-        flex: 0 0 auto;
-        padding-left: 10px;
-        font-size: 0.74em;
-        font-variant-numeric: tabular-nums;
-        color: var(--top-identifier-color);
-        white-space: nowrap;
-      }
     }
   }
 
@@ -290,10 +280,9 @@
 
   /*
    * A phone has room for the title and its address, and nothing else.
-   * Measured at 390px the bar leaves 212px for the name. The date and the
-   * keywords were 250px of it -- more than the whole bar -- for things you
-   * are not reading there, and they are in the note's own front matter two
-   * lines below; they come back the moment there is room. The signature is
+   * Measured at 390px the bar leaves 212px for the name, and the keywords
+   * were 140px of it for something you are not reading there; they come
+   * back the moment there is room. The signature is
    * how the library is addressed, so it stays, but it gives up the pill: as
    * plain mono text it costs 45px rather than 76px, and still reads as a
    * call number in the margin.
@@ -310,8 +299,7 @@
 
   // `.main` is in the selector because the rules above are nested under it,
   // and the keyword row's own `display: flex` would otherwise outrank this.
-  #sb-top .main #sb-current-page .sb-dn-keywords,
-  #sb-top .main #sb-current-page .sb-dn-identifier {
+  #sb-top .main #sb-current-page .sb-dn-keywords {
     display: none;
   }
 

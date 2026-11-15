@@ -16,6 +16,11 @@ functions:
     command:
       name: "Editor: Toggle Variable Pitch"
       menu: { location: view, group: "1_toggle", order: 2, label: "Toggle Variable Pitch" }
+  toggleMetadata:
+    path: "./editor.ts:toggleMetadata"
+    command:
+      name: "Editor: Toggle Metadata"
+      menu: { location: view, group: "1_toggle", order: 3, label: "Toggle Metadata" }
   toggleMarkdownSyntaxRendering:
     path: "./editor.ts:toggleMarkdownSyntaxRendering"
     command:

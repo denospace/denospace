@@ -33,6 +33,11 @@ export async function setEditorMode() {
   if (await clientStore.get("monospacePitch")) {
     await editor.setUiOption("monospacePitch", true);
   }
+  // Folded is the default, so only a deliberate `false` is restored.
+  const foldMetadata = await clientStore.get("foldMetadata");
+  if (foldMetadata != null) {
+    await editor.setUiOption("foldMetadata", foldMetadata);
+  }
   const markdownSyntaxRendering = await clientStore.get(
     "markdownSyntaxRendering",
   );
@@ -69,6 +74,23 @@ export async function toggleVariablePitch() {
   await clientStore.set("monospacePitch", monospace);
   await editor.setUiOption("monospacePitch", monospace);
   await editor.flashNotification(monospace ? "Monospace" : "Variable pitch");
+}
+
+/**
+ * Shows or hides the `#+key:` block at the top of a note.
+ *
+ * Folded, because what it holds -- the title, the signature, the keywords --
+ * is already in the top bar, and five lines of it is a lot of the screen to
+ * spend on saying so twice. The setting is per device and not per note, so
+ * the first line of prose sits at the same height in every note rather than
+ * stepping down by however many keywords this one happens to carry.
+ */
+export async function toggleMetadata() {
+  const folded = !(await editor.getUiOption("foldMetadata"));
+  await clientStore.set("foldMetadata", folded);
+  await editor.setUiOption("foldMetadata", folded);
+  await editor.rebuildEditorState();
+  await editor.flashNotification(folded ? "Metadata hidden" : "Metadata shown");
 }
 
 export async function toggleMarkdownSyntaxRendering() {

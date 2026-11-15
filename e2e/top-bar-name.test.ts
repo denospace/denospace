@@ -30,7 +30,6 @@ test.describe("The page name in the top bar", () => {
       return {
         title: q(".sb-dn-title"),
         signature: q(".sb-dn-signature"),
-        identifier: q(".sb-dn-identifier"),
         // Laid out right to left so the keywords drop before the title does,
         // so position is what says what order they read in.
         keywords: [
@@ -58,9 +57,15 @@ test.describe("The page name in the top bar", () => {
       .toEqual({
         title: "acorn medic",
         signature: "25=00",
-        identifier: "Jul 6, 2026",
         keywords: ["likenow", "mission"],
       });
+
+    // The identifier is not shown at all. A journal entry is titled by its
+    // day already, and on anything else the stamp is the note's identity
+    // rather than something to read.
+    await expect(
+      sbPage.locator("#sb-current-page .sb-dn-identifier"),
+    ).toHaveCount(0);
   });
 
   test("the input underneath still holds the file name", async ({
@@ -103,13 +108,11 @@ test.describe("The page name in the top bar", () => {
       timeout: 20_000,
     });
 
-    // The date and the keywords give up their room entirely -- 250px of a
-    // 212px bar, for things that are in the note's front matter anyway.
-    for (const part of ["identifier", "keyword"]) {
-      await expect(
-        sbPage.locator(`#sb-current-page .sb-dn-${part}`).first(),
-      ).toBeHidden();
-    }
+    // The keywords give up their room entirely -- 140px of a 212px bar, for
+    // something that is in the note's own front matter anyway.
+    await expect(
+      sbPage.locator("#sb-current-page .sb-dn-keyword").first(),
+    ).toBeHidden();
 
     // The signature stays, because it is how the library is addressed -- but
     // without its pill, which is what made it expensive here.
@@ -137,13 +140,19 @@ test.describe("The page name in the top bar", () => {
             .getBoundingClientRect().width,
         ),
         needed: Math.round(range.getBoundingClientRect().width),
+        bar: Math.round(
+          document.querySelector("#sb-current-page")!.getBoundingClientRect()
+            .width,
+        ),
       };
     });
     expect(width.shown).toBeGreaterThanOrEqual(width.needed);
-    // Not merely "fits" -- it fits with room over. Measured at 390px: the
-    // bar leaves 212px for the name, the signature takes 35px of it, and
-    // this title needs about 105px of the rest.
-    expect(width.shown - width.needed).toBeGreaterThan(40);
+    // And it has nearly all of the name's room rather than a corner of it:
+    // the signature is the only other claim on it, and as plain mono text
+    // that is about a fifth, where the pill and the date together were two
+    // thirds. (A toolbar icon is 32px, so what is left over here moves with
+    // how many buttons the space's config asks for; the share does not.)
+    expect(width.shown / width.bar).toBeGreaterThan(0.7);
   });
 
   test("a page that is not a Denote note is left as its name", async ({

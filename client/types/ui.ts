@@ -52,6 +52,13 @@ export type AppViewState = {
      * both.
      */
     monospacePitch: boolean;
+    /**
+     * Whether a note's `#+key:` block is folded away. Kept here rather than
+     * per note deliberately: the point of it is that the body of every note
+     * starts at the same height, and a per-note fold would put that height
+     * back at the mercy of how many keywords a note happens to carry.
+     */
+    foldMetadata: boolean;
     forcedROMode: boolean;
     customStyles?: string;
   };
@@ -86,6 +93,7 @@ export const initialViewState: AppViewState = {
     darkMode: undefined,
     markdownSyntaxRendering: false,
     monospacePitch: false,
+    foldMetadata: true,
     forcedROMode: false,
   },
   isMobile: false,

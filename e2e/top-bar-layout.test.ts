@@ -64,7 +64,6 @@ function visible(page: Page) {
         )
         .map((el) => el.textContent),
       signatureWhole: whole(".sb-dn-signature"),
-      dateWhole: whole(".sb-dn-identifier"),
       titleWidth: Math.round(
         document
           .querySelector("#sb-current-page .sb-dn-title")!
@@ -115,17 +114,17 @@ test.describe("The top bar's row", () => {
     await open(sbPage, sbServer, LONG);
     const long = await expect
       .poll(() => visible(sbPage), { timeout: 15_000 })
-      .toMatchObject({ signatureWhole: true, dateWhole: true })
+      .toMatchObject({ signatureWhole: true })
       .then(() => visible(sbPage));
-    // The address and the date are short and mean nothing truncated, so they
-    // are whole or absent -- never shaved.
+    // An address is short and means nothing truncated, so it is whole or
+    // absent -- never shaved.
     expect(long.keywords).toEqual([]);
 
     // Same three keywords, same bar, a title that leaves room for them.
     await open(sbPage, sbServer, SHORT);
     const short = await expect
       .poll(() => visible(sbPage), { timeout: 15_000 })
-      .toMatchObject({ signatureWhole: true, dateWhole: true })
+      .toMatchObject({ signatureWhole: true })
       .then(() => visible(sbPage));
     expect(short.keywords).toEqual(["likenow", "mission", "writing"]);
     // ... and the long title spent that room on itself.

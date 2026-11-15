@@ -3,10 +3,7 @@ import { createPortal } from "preact/compat";
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { Notification } from "@silverbulletmd/silverbullet/type/client";
 import { Input } from "@silverbulletmd/silverbullet/ui";
-import {
-  denoteIdentifierToDate,
-  parseDenoteName,
-} from "@silverbulletmd/silverbullet/lib/denote";
+import { parseDenoteName } from "@silverbulletmd/silverbullet/lib/denote";
 
 /**
  * Stepping through the journal, when the page being read is one of its
@@ -178,16 +175,17 @@ function ActionButtons({
  * sortable and greppable. That is the right trade on disk and the wrong one in
  * a title bar, where there is room to lay them out.
  *
- * The identifier sits last and quiet: it is the note's identity, not its
- * label, and its date is already the most useful thing about it.
+ * The identifier is not shown. It is the note's identity, not its label, and
+ * the date it carries is either the note's title already -- a journal entry
+ * is named for its day -- or of no interest while reading.
  *
  * Only the title is read, so only the title gets the room. The signature
- * holds the left -- it is the note's address, a handful of characters, and a
- * clipped address is no address -- and the date holds the right. Between them
- * the keywords are the one negotiable thing, and they give way to the title
- * one at a time: `row-reverse` plus wrapping inside a one-line-tall box means
- * a pill that no longer fits is pushed onto a second line and clipped away
- * whole, instead of every pill being shaved at once.
+ * holds the left: it is the note's address, a handful of characters, and a
+ * clipped address is no address. The keywords are the one negotiable thing,
+ * and they give way to the title one at a time -- `row-reverse` plus
+ * wrapping inside a one-line-tall box means a pill that no longer fits is
+ * pushed onto a second line and clipped away whole, instead of every pill
+ * being shaved at once.
  */
 function DenoteName({
   pageName,
@@ -203,7 +201,6 @@ function DenoteName({
   const title = parsed.title
     ? parsed.title.replaceAll("-", " ")
     : parsed.identifier;
-  const date = denoteIdentifierToDate(parsed.identifier);
   return (
     <span className="sb-denote-name">
       {journalNav && (
@@ -232,10 +229,10 @@ function DenoteName({
         <span className="sb-dn-main">
           <span className="sb-dn-title">{title}</span>
           {/*
-        Laid out right to left, so the row is eaten from its far end and the
-        keywords nearest the title are the first to go. Reversed here to
-        cancel that out: on screen they read in the order the file names them.
-      */}
+            Laid out right to left, so the row is eaten from its far end and
+            the keywords nearest the title go first. Reversed here to cancel
+            that out: on screen they read in the order the file names them.
+          */}
           <span className="sb-dn-keywords">
             {parsed.keywords
               .slice()
@@ -246,15 +243,6 @@ function DenoteName({
                 </span>
               ))}
           </span>
-        </span>
-        <span className="sb-dn-identifier" title={pageName}>
-          {date
-            ? date.toLocaleDateString(undefined, {
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-              })
-            : parsed.identifier}
         </span>
       </span>
       {journalNav && (
