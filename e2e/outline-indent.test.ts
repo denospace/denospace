@@ -36,11 +36,25 @@ test.describe("Outline view", () => {
       "Body of delta.",
       { timeout: 20_000 },
     );
-    await page.evaluate(() => {
-      void (globalThis as any).sbRuntime.evalLuaScript(
-        `editor.invokeCommand("Editor: Toggle Outline View")`,
+    // Round the cycle until this is the view in force: prose, outline,
+    // tufte, prose.
+    for (let step = 0; step < 3; step++) {
+      const at = await page.evaluate(
+        () => document.documentElement.dataset.layout,
       );
-    });
+      if (at === "outline") break;
+      await page.evaluate(() => {
+        void (globalThis as any).sbRuntime.evalLuaScript(
+          `editor.invokeCommand("Editor: Cycle View")`,
+        );
+      });
+      await expect
+        .poll(
+          () => page.evaluate(() => document.documentElement.dataset.layout),
+          { timeout: 15_000 },
+        )
+        .not.toBe(at);
+    }
     await expect
       .poll(
         () => page.evaluate(() => document.documentElement.dataset.layout),

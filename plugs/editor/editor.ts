@@ -38,8 +38,9 @@ export async function setEditorMode() {
   if (foldMetadata != null) {
     await editor.setUiOption("foldMetadata", foldMetadata);
   }
-  if ((await clientStore.get("editorLayout")) === "outline") {
-    await editor.setUiOption("editorLayout", "outline");
+  const layout = await clientStore.get("editorLayout");
+  if (layout && layout !== "prose") {
+    await editor.setUiOption("editorLayout", layout);
     await editor.rebuildEditorState();
   }
   const markdownSyntaxRendering = await clientStore.get(
@@ -98,28 +99,57 @@ export async function toggleMetadata() {
 }
 
 /**
- * Switches between the two layouts.
+ * The three layouts, which are good at different things.
  *
  * Prose view puts every marker -- heading stars, list bullets, a keyword's
  * `#+` -- in the left margin, so the text column has one left edge however
  * deep the line sits, and depth is read off the margin and off heading
  * weight. It reads like a page.
  *
- * Outline view is the older arrangement, kept because the two are good at
- * different things: each level steps in by a fixed amount with a hairline
- * drawn per level crossed, so a deep tree can be read off the left edge at a
- * glance. It reads like notes.
+ * Outline view is the older arrangement: each level steps in by a fixed
+ * amount with a hairline drawn per level crossed, so a deep tree can be read
+ * off the left edge at a glance. It reads like notes.
+ *
+ * Tufte view is the look of the site these notes are published to -- a
+ * serif, a narrow measure, a size hierarchy -- with the markup hidden
+ * entirely until the caret is on its line. It reads like what it will become.
  */
-export async function toggleOutlineView() {
-  const outline =
-    (await editor.getUiOption("editorLayout")) === "prose"
-      ? "outline"
-      : "prose";
-  await clientStore.set("editorLayout", outline);
-  await editor.setUiOption("editorLayout", outline);
+const views = [
+  { value: "prose", name: "Prose", description: "Markers in the margin, one text edge" },
+  { value: "outline", name: "Outline", description: "A step and a rule per level" },
+  { value: "tufte", name: "Tufte", description: "The published look: serif, narrow, quiet" },
+];
+
+export async function switchViewCommand() {
+  const current = await editor.getUiOption("editorLayout");
+  const choice = (await editor.filterBox(
+    "View",
+    views.map((view) => ({
+      ...view,
+      // The one in use leads, so the command is also how you see which it is.
+      orderId: view.value === current ? 0 : 1,
+    })),
+    "How this note is laid out",
+  )) as { value: string } | undefined;
+  if (!choice || choice.value === current) {
+    return;
+  }
+  await setView(choice.value);
+}
+
+/** Steps to the next one, for a key that cycles rather than asks. */
+export async function cycleViewCommand() {
+  const current = await editor.getUiOption("editorLayout");
+  const at = views.findIndex((view) => view.value === current);
+  await setView(views[(at + 1) % views.length].value);
+}
+
+async function setView(view: string) {
+  await clientStore.set("editorLayout", view);
+  await editor.setUiOption("editorLayout", view);
   await editor.rebuildEditorState();
   await editor.flashNotification(
-    outline === "outline" ? "Outline view" : "Prose view",
+    `${views.find((v) => v.value === view)?.name ?? view} view`,
   );
 }
 

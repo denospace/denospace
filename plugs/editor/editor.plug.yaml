@@ -21,11 +21,15 @@ functions:
     command:
       name: "Editor: Toggle Metadata"
       menu: { location: view, group: "1_toggle", order: 3, label: "Toggle Metadata" }
-  toggleOutlineView:
-    path: "./editor.ts:toggleOutlineView"
+  switchView:
+    path: "./editor.ts:switchViewCommand"
     command:
-      name: "Editor: Toggle Outline View"
-      menu: { location: view, group: "1_toggle", order: 4, label: "Toggle Outline View" }
+      name: "Editor: Switch View"
+      menu: { location: view, group: "1_toggle", order: 4, label: "Switch View" }
+  cycleView:
+    path: "./editor.ts:cycleViewCommand"
+    command:
+      name: "Editor: Cycle View"
   toggleMarkdownSyntaxRendering:
     path: "./editor.ts:toggleMarkdownSyntaxRendering"
     command:

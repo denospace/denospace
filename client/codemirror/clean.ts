@@ -51,8 +51,10 @@ export function cleanModePlugins(client: Client) {
     admonitionPlugin(),
     commentRegionPlugin(client),
     hideMarksPlugin(),
+    // Only prose view keeps the stars, muted, in the margin. The other two
+    // take them out until the caret lands on the line.
     hideHeaderMarkPlugin(
-      client.ui.viewState.uiOptions.editorLayout !== "outline",
+      client.ui.viewState.uiOptions.editorLayout === "prose",
     ),
     cleanBlockPlugin(),
     fencedCodePlugin(client),

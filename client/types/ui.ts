@@ -60,14 +60,17 @@ export type AppViewState = {
      */
     foldMetadata: boolean;
     /**
-     * Which of the two layouts the editor is in.
+     * Which of the three layouts the editor is in.
      *
      * `prose` puts every marker in the left margin so the text column has
      * one edge at every depth -- a page of writing. `outline` is the older
      * arrangement: each level steps in, with a hairline drawn per level
      * crossed, so structure is read off the left edge -- a page of notes.
+     * `tufte` is the look of the site these notes are published to: a
+     * serif, a narrow measure, and a size hierarchy rather than a weight
+     * one, with the markup out of the way entirely.
      */
-    editorLayout: "prose" | "outline";
+    editorLayout: "prose" | "outline" | "tufte";
     forcedROMode: boolean;
     customStyles?: string;
   };

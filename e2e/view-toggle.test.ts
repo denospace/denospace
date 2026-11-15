@@ -1,12 +1,13 @@
 import { expect, gotoSilverBulletPage, type Page, test } from "./fixtures.ts";
 
 /**
- * Two layouts, and the switch between them.
+ * Three layouts, and the switch between them.
  *
  * Prose view puts every marker in the left margin, so the text column has one
  * left edge however deep a line sits. Outline view steps each level in and
  * draws a hairline per level crossed, so a deep tree is read off the left
- * edge. They are good at different things, which is why both are kept.
+ * edge. Tufte view is the look of the site these notes are published to.
+ * They are good at different things, which is why all three are kept.
  */
 
 const NAME = "20261117T090000==21=06--two-views__one.org";
@@ -78,12 +79,30 @@ test.describe("Prose view and outline view", () => {
       };
     });
 
-  const toggle = (page: Page) =>
+  const cycle = (page: Page) =>
     page.evaluate(() => {
       void (globalThis as any).sbRuntime.evalLuaScript(
-        `editor.invokeCommand("Editor: Toggle Outline View")`,
+        `editor.invokeCommand("Editor: Cycle View")`,
       );
     });
+
+  /** Steps around the cycle until the named view is the one in force. */
+  const switchTo = async (page: Page, view: string) => {
+    for (let step = 0; step < 3; step++) {
+      const at = await page.evaluate(
+        () => document.documentElement.dataset.layout,
+      );
+      if (at === view) return;
+      await cycle(page);
+      await expect
+        .poll(
+          () => page.evaluate(() => document.documentElement.dataset.layout),
+          { timeout: 15_000 },
+        )
+        .not.toBe(at);
+    }
+    throw new Error(`never reached ${view}`);
+  };
 
   test("prose view is one text edge, outline view is a staircase", async ({
     sbPage,
@@ -107,7 +126,7 @@ test.describe("Prose view and outline view", () => {
     expect(prose.guides).toBe(0);
     expect(prose.stars).toBeGreaterThan(0);
 
-    await toggle(sbPage);
+    await cycle(sbPage);
     const outline = await expect
       .poll(() => shape(sbPage), { timeout: 15_000 })
       .toMatchObject({ layout: "outline" })
@@ -122,7 +141,12 @@ test.describe("Prose view and outline view", () => {
     // by DOM rects, so a marker with no rect is one it can land inside.
     expect(outline.stars).toBe(0);
 
-    await toggle(sbPage);
+    // Tufte next, then back round to prose: the cycle is a cycle.
+    await cycle(sbPage);
+    await expect
+      .poll(() => shape(sbPage), { timeout: 15_000 })
+      .toMatchObject({ layout: "tufte", guides: 0 });
+    await cycle(sbPage);
     await expect
       .poll(() => shape(sbPage), { timeout: 15_000 })
       .toMatchObject({ layout: "prose", guides: 0 });
@@ -137,10 +161,7 @@ test.describe("Prose view and outline view", () => {
       "Body of alpha.",
       { timeout: 20_000 },
     );
-    await toggle(sbPage);
-    await expect
-      .poll(() => shape(sbPage), { timeout: 15_000 })
-      .toMatchObject({ layout: "outline" });
+    await switchTo(sbPage, "outline");
 
     // Per device, like the metadata fold: a layout re-chosen on every note is
     // not a layout.

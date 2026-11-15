@@ -17,6 +17,34 @@
 @use "page_widget";
 @use "view_content";
 
+// ET Book, the face elliott.io is set in -- the editor's Tufte view is what
+// uses it, and a browser fetches a face only when something is set in it, so
+// it costs the other views nothing. Three of the family's five: the site's
+// body, its italics and its 900-weight headings.
+@font-face {
+  font-family: "et-book";
+  src: url("et-book-roman.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "et-book";
+  src: url("et-book-italic.woff") format("woff");
+  font-weight: normal;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "et-book";
+  src: url("et-book-bold.woff") format("woff");
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
 @font-face {
   font-family: "iA-Mono";
   src: url("iAWriterMonoS-Regular.woff2");

@@ -1368,7 +1368,7 @@ $comment-border: 1px;
 // Outline view
 // ---------------------------------------------------------------------------
 //
-// The other of the two layouts, switched by `Editor: Toggle Outline View`.
+// The second of the three layouts, switched by `Editor: Switch View`.
 // Everything above lays a note out as a page: the markers hang in the left
 // margin and the text column has one edge at every depth. This lays it out as
 // an outline: each level steps in by a fixed amount, a hairline is drawn per
@@ -1419,8 +1419,13 @@ html[data-layout="outline"] #sb-main .cm-editor {
     }
   }
 
-  // Markers sit in the text column here, at their own width, rather than in
-  // a box cut to the columns the line hangs back by.
+}
+
+// Shared by the two views that are not prose view: the markers go back into
+// the text column, at their own width, rather than into a box cut to the
+// columns the line hangs back by.
+html[data-layout="outline"] #sb-main .cm-editor,
+html[data-layout="tufte"] #sb-main .cm-editor {
   .sb-list-marker,
   .sb-list-space,
   .sb-keyword-hang,
@@ -1431,16 +1436,171 @@ html[data-layout="outline"] #sb-main .cm-editor {
   }
 
   // The space that puts a `#+` in the stars' column is a prose-view device;
-  // here the sigil is just the first two characters of the line.
+  // elsewhere the sigil is just the first two characters of the line.
   .sb-keyword-hang::after {
     content: none;
   }
 
-  // The stars are taken out of the document here rather than hidden in CSS
-  // -- see `hideHeaderMarkPlugin` -- so there is nothing in the margin to
-  // hang back over unless the caret is on the line and showing them.
+  // The stars are taken out of the document rather than hidden in CSS -- see
+  // `hideHeaderMarkPlugin` -- so there is nothing in the margin to hang back
+  // over unless the caret is on the line and showing them.
   .cm-line:not(.sb-header-inside) {
     --sb-header-hang: 0px;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Tufte view
+// ---------------------------------------------------------------------------
+//
+// The look of the site these notes are published to, taken from the
+// stylesheet that generates it (`plug-api/lib/tufte.ts`): the same serif, the
+// same measure, and a hierarchy of size and italics rather than one of
+// weight. Its rem values are against a 15px root and a 1.4rem body, so they
+// are given here as multiples of the body size -- h1 is 3.2/1.4 of it, and
+// its 4rem of space above is 60/48 of its own.
+//
+// What the site does with margins -- sidenotes, margin notes, figures with
+// captions in the gutter -- is not here. None of it is in Org, and a view
+// that pretended otherwise would be showing something the file does not say.
+html[data-layout="tufte"] {
+  --root-background-color: #fffff8;
+  --root-color: #111;
+}
+
+html[data-layout="tufte"][data-theme="dark"] {
+  // The site has no dark mode -- it is ivory and ink, always. Forcing that
+  // on someone reading in the dark would be worse than departing from it,
+  // so this is the same paper after nightfall.
+  --root-background-color: #151513;
+  --root-color: #f0eee4;
+}
+
+html[data-layout="tufte"] #sb-main .cm-editor {
+  // The theme's own stack, ET Book first. Three of its faces are bundled,
+  // and a browser fetches a face only when something is set in it, so they
+  // cost the other two views nothing.
+  --editor-font:
+    et-book, "Noto Serif SC", Palatino, "Palatino Linotype",
+    "Palatino LT STD", "Book Antiqua", Georgia, serif;
+  --editor-monospace-font:
+    Consolas, "Liberation Mono", Menlo, Courier, monospace;
+  // 21px, which is the theme's 1.4rem against its 15px root.
+  font-size: 21px;
+
+  .cm-content {
+    // Stated here as well, and in px: something between the two resolves a
+    // line-height of its own, and 30 on 21 is the leading the page is set
+    // on.
+    line-height: 30px;
+    // The theme sets its paragraphs in 55% of an 87.5% body, which comes to
+    // about 64 characters at this size -- the measure the look is built
+    // around.
+    max-width: 32em;
+  }
+
+  // Weight 900 and leading of 1, which is the theme's `h1, h2, h3` rule.
+  // Not Tufte's own CSS, which sets them at 400 -- this is the site as it
+  // actually is.
+  .sb-line-h1,
+  .sb-line-h2,
+  .sb-line-h3 {
+    font-weight: 900;
+    line-height: 1;
+  }
+
+  .sb-line-h1,
+  .sb-line-h2,
+  .sb-line-h3,
+  .sb-line-h4,
+  .sb-line-h5,
+  .sb-line-h6 {
+    color: inherit;
+    --sb-line-pad-y: 0px;
+  }
+
+  // The theme's margins, as multiples of each heading's own size: its 4rem
+  // above an h1 is 60px against that heading's 48.
+  .sb-line-h1 {
+    font-size: 2.29em;
+    padding-top: 1.25em;
+    padding-bottom: 0.47em;
+  }
+
+  // `h2, h3 { font-style: italic; margin-bottom: 0 }` -- a heading sits
+  // against the text it introduces.
+  .sb-line-h2 {
+    font-size: 1.57em;
+    font-style: italic;
+    padding-top: 0.95em;
+  }
+
+  .sb-line-h3 {
+    font-size: 1.21em;
+    font-style: italic;
+    padding-top: 1.18em;
+  }
+
+  // The theme stops at three, as Tufte's own CSS does. Past that a headline
+  // is a label on a passage, so it stays at the size of the text it labels
+  // and goes quiet instead -- which is a choice this view is making, not
+  // one the site had already made.
+  .sb-line-h4,
+  .sb-line-h5,
+  .sb-line-h6 {
+    font-size: 1em;
+    font-style: italic;
+    padding-top: 1.4em;
+    padding-bottom: 0.4em;
+  }
+
+  .sb-line-h5,
+  .sb-line-h6 {
+    color: var(--editor-meta-color, inherit);
+  }
+
+  // Underlined and in the text's own colour, as the site has them: a link
+  // is a word in a sentence, not a blue thing in one.
+  .sb-link,
+  .sb-denote-link,
+  .sb-wiki-link {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  // `code, .code, kbd { font-size: 1.125rem; line-height: 1.42 }`, and no
+  // tint behind it: the theme gives code a face and a size and nothing else.
+  .sb-code,
+  .sb-code-info,
+  .sb-line-code,
+  .sb-line-fenced-code {
+    font-size: 0.8em;
+    line-height: 1.42;
+    background: none;
+  }
+
+  // In the ink, as a browser's own list markers are and as the theme leaves
+  // them. Quieting them is a prose-view idea, where they sit in a margin.
+  .cm-list-bullet,
+  .sb-list-marker {
+    color: inherit;
+  }
+
+  // A quote is prose on the site -- `blockquote { font-size: 1.4rem }` in
+  // the body's own face, set narrower and nothing else. The editor marks a
+  // `#+BEGIN_QUOTE` body as a block like any other, which is where the
+  // monospace and the tint came from, and draws a bar the theme does not
+  // have; the indent is what says where it is, as on the page.
+  .sb-quote.sb-code {
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+    background: none;
+  }
+
+  .cm-line.sb-line-blockquote {
+    background: none;
   }
 }
 
@@ -1460,10 +1620,10 @@ html[data-layout="outline"] #sb-main .cm-editor {
 // heading stars came to be left at the highlighter's grey while a token
 // nobody was reading said otherwise.
 //
-// `:not([data-layout="outline"])` rather than `[data-layout="prose"]`: the
+// Named by what it is not, rather than as `[data-layout="prose"]`: the
 // attribute is set from JavaScript after the first paint, and prose is the
 // default, so the absence of it has to mean prose.
-html:not([data-layout="outline"]) #sb-main .cm-editor {
+html:not([data-layout="outline"], [data-layout="tufte"]) #sb-main .cm-editor {
   .sb-header-margin,
   .sb-header-margin .sb-meta,
   .sb-list-marker,
