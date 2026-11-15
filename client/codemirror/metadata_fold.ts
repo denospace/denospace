@@ -1,6 +1,12 @@
 import { foldedRanges, foldEffect, unfoldEffect } from "@codemirror/language";
-import type { EditorState, Extension } from "@codemirror/state";
-import { type EditorView, ViewPlugin, type ViewUpdate } from "@codemirror/view";
+import { EditorState, RangeSet } from "@codemirror/state";
+import type { Extension } from "@codemirror/state";
+import {
+  Decoration,
+  EditorView,
+  ViewPlugin,
+  type ViewUpdate,
+} from "@codemirror/view";
 import type { Client } from "../client.ts";
 
 /**
@@ -51,6 +57,13 @@ export function findMetadataBlock(
   }
   if (last < state.doc.lines && state.doc.line(last + 1).text.trim() === "") {
     last++;
+  }
+  // Nothing below it is nothing to fold *to*: a note that is all front
+  // matter -- which is what a note is for its first few seconds -- would
+  // hide itself entirely, leaving nowhere to put the caret and no way to
+  // start writing. It folds as soon as there is a body.
+  if (last >= state.doc.lines) {
+    return;
   }
   return { from: state.doc.line(1).from, to: state.doc.line(last).to };
 }
@@ -105,7 +118,57 @@ export function isFolded(
   return covered;
 }
 
+/**
+ * Keeps the caret out of a folded block.
+ *
+ * Folding hides the text; it does not take the positions away, and a caret
+ * left among them is a caret in text nobody can see. The keys make that
+ * plain: HOME puts the caret on the hidden first line, and TAB there is
+ * `org-cycle`, which finds the fold it is standing in and opens it -- so
+ * pressing TAB at the top of a note edited the metadata.
+ *
+ * An atomic range moves any selection that lands inside it to the edge,
+ * which covers the lot: clicks, HOME, arrow keys, and every command that
+ * works from where the caret is.
+ */
+const caretOutOfTheFold = EditorView.atomicRanges.of((view) => {
+  const block = findMetadataBlock(view.state);
+  if (!block || !isFolded(view.state, block.from, block.to)) {
+    return RangeSet.empty;
+  }
+  return RangeSet.of([Decoration.replace({}).range(block.from, block.to)]);
+});
+
+/**
+ * The same thing again, for every other way a caret gets somewhere.
+ *
+ * `atomicRanges` is consulted in three places only -- a pointer-driven
+ * selection, cursor motion, and drawing the selection -- so HOME still put
+ * the caret on the hidden first line, and TAB there is `org-cycle`, which
+ * found the fold it was standing in and opened it. A filter sees every
+ * transaction that sets a selection, whatever asked for it.
+ */
+const keepCaretOut = EditorState.transactionFilter.of((tr) => {
+  // A transaction that also edits moves the positions under us, and the
+  // fold's own transactions are what put the caret right in the first place.
+  if (!tr.selection || tr.docChanged) return tr;
+  const block = findMetadataBlock(tr.startState);
+  if (!block || !isFolded(tr.startState, block.from, block.to)) return tr;
+  const inside = tr.newSelection.ranges.some(
+    (range) => range.from <= block.to && range.to >= block.from,
+  );
+  if (!inside) return tr;
+  const anchor = positionAfter(tr.startState, block.to);
+  // Refuse rather than loop, if there turns out to be nowhere outside it.
+  if (anchor <= block.to) return tr;
+  return [tr, { selection: { anchor }, sequential: true }];
+});
+
 export function metadataFoldingExtension(client: Client): Extension {
+  return [caretOutOfTheFold, keepCaretOut, metadataFoldPlugin(client)];
+}
+
+function metadataFoldPlugin(client: Client): Extension {
   return ViewPlugin.fromClass(
     class {
       private destroyed = false;

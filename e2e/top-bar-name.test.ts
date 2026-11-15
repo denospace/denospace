@@ -68,6 +68,30 @@ test.describe("The page name in the top bar", () => {
     ).toHaveCount(0);
   });
 
+  test("the browser tab is called by the title, not the file name", async ({
+    sbPage,
+    sbServer,
+  }) => {
+    await gotoSilverBulletPage(sbPage, sbServer, NAME);
+    await expect(sbPage.locator("#sb-editor .cm-content")).toContainText(
+      "Body.",
+      { timeout: 20_000 },
+    );
+    // From the front matter, so it keeps its capitals -- the file name's own
+    // title is a slug, and `25=00--acorn-medic__likenow_mission.org` says
+    // nothing useful in the space a tab has.
+    await expect
+      .poll(() => sbPage.title(), { timeout: 15_000 })
+      .toBe("Acorn Medic");
+
+    // A page that is not a Denote note keeps its name, which is what it is
+    // called anyway.
+    await gotoSilverBulletPage(sbPage, sbServer, PLAIN);
+    await expect
+      .poll(() => sbPage.title(), { timeout: 15_000 })
+      .toContain("Notes");
+  });
+
   test("the input underneath still holds the file name", async ({
     sbPage,
     sbServer,

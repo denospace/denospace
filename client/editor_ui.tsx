@@ -1,6 +1,7 @@
 import { closeSearchPanel } from "@codemirror/search";
 import { runScopeHandlers } from "@codemirror/view";
 import { isJournalEntryName } from "@silverbulletmd/silverbullet/lib/denote";
+import { pageTitle } from "./lib/page_title.ts";
 import { getNameFromPath } from "@silverbulletmd/silverbullet/lib/ref";
 import type {
   FilterOption,
@@ -296,9 +297,10 @@ export class MainUI {
 
     useEffect(() => {
       if (viewState.current) {
-        document.title =
-          (this.client.currentPageMeta()?.pageDecoration?.prefix ?? "") +
-          getNameFromPath(viewState.current.path);
+        document.title = pageTitle(
+          getNameFromPath(viewState.current.path),
+          this.client.currentPageMeta(),
+        );
       }
     }, [viewState.current]);
 
