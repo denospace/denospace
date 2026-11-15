@@ -418,12 +418,18 @@ export function denoteLinkPlugin(client: Client): Extension {
                 ? "sb-link sb-denote-link sb-journal-link"
                 : "sb-link sb-org-external-link",
               attributes: {
-                href:
-                  zotero && zoteroUsername
+                href: zotero
+                  ? // `zotero:KEY` is not an address a browser can follow;
+                    // without a username to send it to the web library, the
+                    // desktop app's own URL is what there is. A described
+                    // link fell through to the raw target, which did
+                    // nothing at all when clicked.
+                    zoteroUsername
                     ? zoteroWebUrl(zoteroUsername, zotero[1])
-                    : journal
-                      ? "#"
-                      : target,
+                    : zoteroSelectUrl(zotero[1])
+                  : journal
+                    ? "#"
+                    : target,
                 title: zotero
                   ? (client.zotero.entryForItem(zotero[1])?.title ??
                     `Zotero item ${zotero[1]}`)
@@ -436,6 +442,10 @@ export function denoteLinkPlugin(client: Client): Extension {
                       "data-link-target": target,
                     }
                   : {}),
+                // Followed through the plug, which knows whether this device
+                // opens Zotero or zotero.org -- the href is the fallback for
+                // a middle click or a copied address.
+                ...(zotero ? { "data-link-zotero": zotero[1] } : {}),
               },
             }).range(textFrom, textTo),
           );
@@ -643,13 +653,22 @@ function linkClickHandler(client: Client): Extension {
         return false;
       }
       const anchor = (event.target as HTMLElement | null)?.closest?.(
-        "a.sb-denote-link",
+        "a.sb-denote-link, a[data-link-zotero]",
       ) as HTMLElement | null;
       if (!anchor) {
         return false;
       }
-      const { linkHeader, linkDenote, linkTarget, linkJournal } =
+      const { linkHeader, linkDenote, linkTarget, linkJournal, linkZotero } =
         anchor.dataset;
+      // Through the plug, which knows whether this device opens the Zotero
+      // app or zotero.org. The href is still there for a middle click.
+      if (linkZotero) {
+        event.preventDefault();
+        client.clientSystem.system
+          .invokeFunction("index.zoteroOpenItemKey", [linkZotero])
+          .catch((err) => console.error("Could not open Zotero item", err));
+        return true;
+      }
       if (!linkTarget) {
         return false;
       }

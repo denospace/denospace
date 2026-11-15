@@ -129,6 +129,42 @@ test("Tables split into header, delimiter and body rows", () => {
   expect(cells.map((c) => renderToText(c))).toEqual(["a", "b", "1", "2"]);
 });
 
+test("A bracket link in a keyword's value is a link", () => {
+  // A reference note says where its file is in `#+file:`, and that is the
+  // one thing in the front matter anyone wants to click. Everything else in
+  // a value stays plain text: the full inline parser over one would make
+  // `#+title: *Hamlet*` bold and `#+filetags:` a mess.
+  const tree = parseOrg(
+    "#+file:       [[zotero:ZRSX2MUP][Elliott Williams CV.pdf]]\n",
+  );
+  const value = findNodeOfType(tree, "OrgKeywordValue")!;
+  const link = findNodeOfType(value, "OrgLink")!;
+  expect(findNodeOfType(link, "OrgLinkTarget")!.children![0].text).toEqual(
+    "zotero:ZRSX2MUP",
+  );
+  expect(findNodeOfType(link, "OrgLinkDescription")!.children![0].text).toEqual(
+    "Elliott Williams CV.pdf",
+  );
+});
+
+test("A title that merely contains brackets is left alone", () => {
+  const tree = parseOrg("#+title:      Not [[a link\n");
+  const value = findNodeOfType(tree, "OrgKeywordValue")!;
+  expect(findNodeOfType(value, "OrgLink")).toBeNull();
+  expect(value.children![0].text).toEqual("Not [[a link");
+});
+
+test("A POSIX class in a dynamic block's regexp is not a link", () => {
+  // `:regexp "==31[[:alpha:]].*--"` opens with `[[` and is not a link. The
+  // block parser takes these lines before the keyword rule sees them, which
+  // is what keeps it that way.
+  const tree = parseOrg(
+    '#+BEGIN: denote-links :regexp "==31[[:alpha:]].*--" :id-only nil\n' +
+      "#+END:\n",
+  );
+  expect(findNodeOfType(tree, "OrgLink")).toBeNull();
+});
+
 test("Keyword lines and property drawers are structured, not prose", () => {
   const tree = parseOrg(
     "#+TITLE: My page\n* Item\n:PROPERTIES:\n:COST: 250\n:END:\nBody text\n",
@@ -324,12 +360,11 @@ test("A bracket with no citekey is not a citation", () => {
 // where the URL stops: the trailing punctuation belongs to the sentence.
 test("A bare https URL in running text is a NakedURL", () => {
   const urls = (text: string) =>
-    collectNodesOfType(parseOrg(text), "NakedURL").map((n) =>
-      renderToText(n),
-    );
+    collectNodesOfType(parseOrg(text), "NakedURL").map((n) => renderToText(n));
 
-  expect(urls("called https://www.emdria.org/directory/people/x/ left vmail"))
-    .toEqual(["https://www.emdria.org/directory/people/x/"]);
+  expect(
+    urls("called https://www.emdria.org/directory/people/x/ left vmail"),
+  ).toEqual(["https://www.emdria.org/directory/people/x/"]);
   // Sentence punctuation is not part of the address.
   expect(urls("see https://example.com/a, then stop.")).toEqual([
     "https://example.com/a",

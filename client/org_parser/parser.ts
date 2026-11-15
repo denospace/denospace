@@ -516,25 +516,31 @@ function parseBlocks(
       children.push(node("OrgKeywordMark", at, at + colon.length));
       at += colon.length + gap.length;
       if (value) {
-        // A bare URL in a keyword's value is linkified; nothing else in there
-        // is. `#+url:` on a reference note exists to be clicked, and a value
-        // is otherwise plain text -- running the full inline parser over it
-        // would make `#+title: *Hamlet*` bold and `#+filetags:` a mess.
-        const url = nakedUrlRegex.exec(value);
+        // A bare URL or a bracket link in a keyword's value is linkified;
+        // nothing else in there is. `#+url:` on a reference note exists to
+        // be clicked, and so does the `#+file:` link to the note's file in
+        // Zotero. A value is otherwise plain text -- running the full inline
+        // parser over it would make `#+title: *Hamlet*` bold and
+        // `#+filetags:` a mess.
+        const bracket = value.indexOf("[[");
+        const link = bracket === -1 ? null : parseOrgLink(value, bracket, at);
+        const url = link ? null : nakedUrlRegex.exec(value);
         children.push(
           node(
             "OrgKeywordValue",
             at,
             at + value.length,
-            url
-              ? [
-                  node(
-                    "NakedURL",
-                    at + value.indexOf(url[0]),
-                    at + value.indexOf(url[0]) + url[0].length,
-                  ),
-                ]
-              : [],
+            link
+              ? [link.node]
+              : url
+                ? [
+                    node(
+                      "NakedURL",
+                      at + value.indexOf(url[0]),
+                      at + value.indexOf(url[0]) + url[0].length,
+                    ),
+                  ]
+                : [],
           ),
         );
       }

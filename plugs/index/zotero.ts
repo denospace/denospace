@@ -604,7 +604,16 @@ export async function newReferenceNoteCommand() {
   await editor.navigate({ path: note.page as any });
 }
 
-/** `Zotero: Open` — the citation or `zotero:` link under the cursor. */
+/**
+ * `Zotero: Open` — the citation or `zotero:` link under the cursor, or
+ * failing that the file this note is about.
+ *
+ * The fallback is the point of it on a reference note. What such a note has
+ * to say about its file is a `#+file:` link in its front matter, which the
+ * editor folds away by default and which nobody wants to go hunting for
+ * with a caret anyway: the note *is* the file's note, so the command opens
+ * the file from wherever in it you happen to be standing.
+ */
 export async function openUnderCursorCommand() {
   const text = await editor.getText();
   const pos = await editor.getCursor();
@@ -619,7 +628,19 @@ export async function openUnderCursorCommand() {
   }
   const link = /zotero:([A-Z0-9]{8})/.exec(around);
   if (link) return openItemKey(link[1]);
-  await editor.flashNotification("No citation under the cursor", "info");
+
+  // The attachment first: it is the file itself, where the item is the
+  // record the file hangs from.
+  const attachment = attachmentOf(text);
+  if (attachment) return openItemKey(attachment);
+  const item = itemOf(text);
+  if (item) return openItemKey(item);
+
+  await editor.flashNotification(
+    "Nothing to open: no citation under the cursor, and this note has no " +
+      "Zotero file",
+    "info",
+  );
 }
 
 // ---------------------------------------------------------------------------
