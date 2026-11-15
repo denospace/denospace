@@ -156,7 +156,7 @@ test.describe("Tufte view", () => {
     expect(type.h3.style).toBe("italic");
   });
 
-  test("the measure is the site's, and the paper is ivory", async ({
+  test("the measure is the site's, and so is the paper", async ({
     sbPage,
     sbServer,
   }) => {
@@ -170,17 +170,112 @@ test.describe("Tufte view", () => {
       ),
       // What is actually painted, rather than what a token says: the paper
       // is `#sb-root`, and the bar above it was grey, which drew a line
-      // across the top of a view that is meant to read as a page.
+      // across the top of a view that is meant to read as a page. The
+      // colour is the built stylesheet's `#F9F9F9`, not the ivory its
+      // source SCSS still claims.
       paper: getComputedStyle(document.querySelector("#sb-root")!)
         .backgroundColor,
-      bar: getComputedStyle(document.querySelector("#sb-top")!)
-        .backgroundColor,
+      bar: getComputedStyle(document.querySelector("#sb-top")!).backgroundColor,
       behind: getComputedStyle(document.body).backgroundColor,
     }));
     expect(page.measure).toBe(672);
-    expect(page.paper).toBe("rgb(255, 255, 248)");
+    expect(page.paper).toBe("rgb(249, 249, 249)");
     expect(page.bar).toBe(page.paper);
     expect(page.behind).toBe(page.paper);
+  });
+
+  test("headings and prose share one edge, and a list steps in from it", async ({
+    sbPage,
+    sbServer,
+  }) => {
+    await open(sbPage, sbServer);
+    const at = await sbPage.evaluate(() => {
+      const rows: Record<
+        string,
+        { text: number | null; marker: number | null }
+      > = {};
+      for (const line of document.querySelectorAll("#sb-editor .cm-line")) {
+        const label = (line.textContent ?? "").trim();
+        if (!label) continue;
+        // The first glyph of the line's *text*, skipping any marker.
+        const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
+        let node: Node | null;
+        let text: number | null = null;
+        while ((node = walker.nextNode())) {
+          if (
+            (node.parentElement as Element | null)?.closest(
+              ".sb-list-marker, .sb-list-space, .cm-list-bullet",
+            )
+          ) {
+            continue;
+          }
+          const value = (node.textContent ?? "").replace(/^\s+/, "");
+          if (!value) continue;
+          const index = (node.textContent ?? "").length - value.length;
+          const range = document.createRange();
+          range.setStart(node, index);
+          range.setEnd(node, index + 1);
+          text = Math.round(range.getBoundingClientRect().left * 10) / 10;
+          break;
+        }
+        const bullet = line.querySelector(".cm-list-bullet, .sb-list-marker");
+        rows[label.slice(0, 16)] = {
+          text,
+          marker: bullet
+            ? Math.round(bullet.getBoundingClientRect().left * 10) / 10
+            : null,
+        };
+      }
+      return rows;
+    });
+
+    const edge = at["A paragraph of p"].text;
+    // Prose view hangs a list marker in the margin. This view has no margin
+    // to hang it in, and inheriting that put every heading and paragraph a
+    // marker's width to the right of the list.
+    expect(at["A Section"].text).toBe(edge);
+    expect(at["A Subsection"].text).toBe(edge);
+    expect(at["Third Level"].text).toBe(edge);
+
+    // A list steps in from that edge rather than sharing it, which is the
+    // theme's `ol, ul, dl { -webkit-padding-start: 5% }` -- about 61px
+    // against the body it sets. The marker goes there, the words after it.
+    expect(at["• a bullet"].marker!).toBeGreaterThan(edge! + 40);
+    expect(at["• a bullet"].text!).toBeGreaterThan(at["• a bullet"].marker!);
+  });
+
+  test("the theme's smaller things: spacing, rules, hyphens, selection", async ({
+    sbPage,
+    sbServer,
+  }) => {
+    await open(sbPage, sbServer);
+    const detail = await sbPage.evaluate(() => {
+      const line = (needle: string) =>
+        [...document.querySelectorAll("#sb-editor .cm-line")].find((el) =>
+          (el.textContent ?? "").includes(needle),
+        ) as HTMLElement | undefined;
+      const item = line("a bullet")!;
+      const prose = line("A paragraph of prose")!;
+      return {
+        // `li, dt, dd { padding: 0.5rem 0 }` against a 15px root.
+        itemPadding: getComputedStyle(item).paddingTop,
+        prosePadding: getComputedStyle(prose).paddingTop,
+        // `p { hyphens: auto }`.
+        hyphens: getComputedStyle(
+          document.querySelector("#sb-editor .cm-content")!,
+        ).hyphens,
+        // `::selection { background-color: #404040 }`.
+        selection: getComputedStyle(
+          document.querySelector("#sb-main .cm-editor")!,
+        )
+          .getPropertyValue("--editor-selection-background-color")
+          .trim(),
+      };
+    });
+    expect(detail.itemPadding).toBe("7.5px");
+    expect(detail.prosePadding).toBe("0px");
+    expect(detail.hyphens).toBe("auto");
+    expect(detail.selection).toBe("#404040");
   });
 
   test("the markup is out of the way until the caret is on it", async ({

@@ -1385,17 +1385,6 @@ html[data-layout="outline"] #sb-main .cm-editor {
     );
     padding-left: calc(var(--sb-indent) + var(--sb-outline-indent));
 
-    // A list marker goes back to indenting its own words: `--sb-indent` is
-    // what the negative text-indent cancels, so putting the marker in it
-    // gives the ordinary hanging list -- marker at the text's left edge,
-    // wrapped rows lining up under the words.
-    --sb-indent: calc(
-      var(--sb-list-nest, 0px) + var(--sb-list-marker) +
-        var(--sb-quote-indent, 0px) + var(--sb-inline-comment-indent, 0px)
-    );
-    // Which leaves only a revealed heading's markers hanging.
-    --sb-hang: var(--sb-header-hang);
-
     // One hairline per level crossed, in the indent it opened up. Adjacent
     // lines paint the same x positions, so the marks join into continuous
     // rules down a subtree -- which is the whole point: depth is read off
@@ -1426,6 +1415,24 @@ html[data-layout="outline"] #sb-main .cm-editor {
 // columns the line hangs back by.
 html[data-layout="outline"] #sb-main .cm-editor,
 html[data-layout="tufte"] #sb-main .cm-editor {
+  .cm-line {
+    // A list marker goes back to indenting its own words: `--sb-indent` is
+    // what the negative text-indent cancels, so putting the marker in it
+    // gives the ordinary hanging list -- marker to the left of the text,
+    // wrapped rows lining up under the words, and the words themselves a
+    // step in from the prose, which is where a browser's own list markers
+    // and the site's `ul` both put them.
+    --sb-indent: calc(
+      var(--sb-list-nest, 0px) + var(--sb-list-marker) +
+        var(--sb-quote-indent, 0px) + var(--sb-inline-comment-indent, 0px)
+    );
+    // Which leaves only a revealed heading's markers hanging. Without this
+    // a list kept prose view's arrangement -- the marker pulled out into a
+    // margin these views do not have -- and every heading and paragraph
+    // then looked indented against it.
+    --sb-hang: var(--sb-header-hang);
+  }
+
   .sb-list-marker,
   .sb-list-space,
   .sb-keyword-hang,
@@ -1464,14 +1471,18 @@ html[data-layout="tufte"] #sb-main .cm-editor {
 // captions in the gutter -- is not here. None of it is in Org, and a view
 // that pretended otherwise would be showing something the file does not say.
 html[data-layout="tufte"] {
-  --root-background-color: #fffff8;
+  // Taken from `public/css/hugo-tufte.min.css`, which is what the site
+  // actually serves -- its source SCSS still says Tufte's ivory `#fffff8`,
+  // and the built file says this. The built one is what anyone looking at
+  // the site sees, so it is the one to match.
+  --root-background-color: #f9f9f9;
   --root-color: #111;
   // The chrome takes the paper too. The site has no bar at all, and a grey
   // one above ivory draws a line across the top of a view whose whole point
   // is that it reads as a page -- so the bar's contents float on the paper
   // instead, which is as close to no bar as there is. This token also backs
   // the window behind everything, so an overscroll shows paper as well.
-  --top-background-color: #fffff8;
+  --top-background-color: #f9f9f9;
 }
 
 html[data-layout="tufte"][data-theme="dark"] {
@@ -1536,10 +1547,14 @@ html[data-layout="tufte"] #sb-main .cm-editor {
 
   // `h2, h3 { font-style: italic; margin-bottom: 0 }` -- a heading sits
   // against the text it introduces.
+  //
+  // 5.5rem above it rather than the 2.1rem in the theme's SCSS: a later
+  // rule in the built stylesheet raises it, and that is the one in force.
+  // 82.5px against this heading's own 33.
   .sb-line-h2 {
     font-size: 1.57em;
     font-style: italic;
-    padding-top: 0.95em;
+    padding-top: 2.5em;
   }
 
   .sb-line-h3 {
@@ -1608,6 +1623,64 @@ html[data-layout="tufte"] #sb-main .cm-editor {
 
   .cm-line.sb-line-blockquote {
     background: none;
+  }
+
+  // `li, dt, dd { padding: 0.5rem 0 }` -- 7.5px above and below each item,
+  // which is most of what a list on the site looks like.
+  .cm-line.sb-line-li {
+    --sb-line-pad-y: 7.5px;
+  }
+
+  // `ol, ul, dl { -webkit-padding-start: 5% }`, which against the body the
+  // site sets is about 61px. The marker goes there and the words after it,
+  // so a list steps in from the prose rather than sharing its edge.
+  //
+  // Added to the padding rather than to `--sb-indent`, which the negative
+  // text-indent cancels: put it there and the first row is pulled straight
+  // back out again, leaving the step on the wrapped rows alone.
+  .cm-line.sb-line-li {
+    padding-left: calc(var(--sb-indent) + 2.9em);
+  }
+
+  // `p { hyphens: auto }`. The site breaks words at the measure, and at 64
+  // characters of serif that is a good part of how an even right edge is
+  // got.
+  .cm-content {
+    hyphens: auto;
+    // `:root * { text-rendering: optimizeLegibility }`.
+    text-rendering: optimizelegibility;
+  }
+
+  // `hr { text-align: left; margin-left: 0; width: 75%; max-width: 45rem;
+  // border-style: solid none none none; border-color: #111 }` -- a rule
+  // that starts at the margin and stops short of the measure, rather than
+  // the row of dashes the source has.
+  .sb-line-hr {
+    margin-top: 1.4em;
+    margin-bottom: 1.4em;
+  }
+
+  .sb-hr {
+    font-weight: inherit;
+    color: transparent;
+    background:
+      linear-gradient(var(--root-color), var(--root-color)) left top / 75% 1px
+      no-repeat;
+  }
+
+  // `table tr th { border-bottom: 1px solid #111; text-transform: uppercase }`.
+  .sb-line-tbl-header {
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--root-color);
+  }
+
+  // `::selection { color: #fffff8; background-color: #404040 }` -- the one
+  // place the site's ivory survives, as the colour of selected text.
+  --editor-selection-background-color: #404040;
+
+  ::selection {
+    color: #fffff8;
+    background-color: #404040;
   }
 }
 
