@@ -4,7 +4,21 @@ import type { SyntaxNode } from "@lezer/common";
 import { EditorState } from "@codemirror/state";
 import { TaskList } from "../markdown_parser/extended_task.ts";
 import { buildExtendedMarkdownLanguage } from "../markdown_parser/parser.ts";
-import { computeMarkerWidth, listIndentPlugin } from "./list_indent.ts";
+import { computeMarkerParts, listIndentPlugin } from "./list_indent.ts";
+
+/**
+ * A list item's left columns split in two, because they want opposite
+ * treatment: `nest` indents the text, `marker` hangs in the margin so the
+ * item's words start on the same edge as every other line's.
+ *
+ * A task's `[ ]` is in neither. It is a control you click and a qualifier of
+ * the words after it, so it stays in the text column -- which is also where
+ * Bear and iA Writer put one.
+ */
+const parts = (node: Parameters<typeof computeMarkerParts>[0]) => {
+  const p = computeMarkerParts(node, 0);
+  return p && { nest: p.nest, marker: p.marker };
+};
 import { blockquotePlugin } from "./block_quote.ts";
 
 const parser = baseParser.configure([TaskList]);
@@ -25,80 +39,77 @@ function firstListItem(source: string): { node: SyntaxNode; source: string } {
   return { node, source };
 }
 
-test("computeMarkerWidth: plain unordered with *", () => {
+test("marker parts: plain unordered with *", () => {
   const { node } = firstListItem("* item");
-  expect(computeMarkerWidth(node, 0)).toBe(2);
+  expect(parts(node)).toEqual({ nest: 0, marker: 2 });
 });
 
-test("computeMarkerWidth: plain unordered with -", () => {
+test("marker parts: plain unordered with -", () => {
   const { node } = firstListItem("- item");
-  expect(computeMarkerWidth(node, 0)).toBe(2);
+  expect(parts(node)).toEqual({ nest: 0, marker: 2 });
 });
 
-test("computeMarkerWidth: nested unordered (2 leading spaces)", () => {
+test("marker parts: nested unordered (2 leading spaces)", () => {
   const { node } = firstListItem("  * item");
-  expect(computeMarkerWidth(node, 0)).toBe(4);
+  expect(parts(node)).toEqual({ nest: 2, marker: 2 });
 });
 
-test("computeMarkerWidth: task at level 1", () => {
+test("marker parts: task at level 1", () => {
   const { node } = firstListItem("* [ ] task");
-  expect(computeMarkerWidth(node, 0)).toBe(6);
+  expect(parts(node)).toEqual({ nest: 0, marker: 2 });
 });
 
-test("computeMarkerWidth: task at level 2", () => {
+test("marker parts: task at level 2", () => {
   const { node } = firstListItem("  * [ ] task");
-  expect(computeMarkerWidth(node, 0)).toBe(8);
+  expect(parts(node)).toEqual({ nest: 2, marker: 2 });
 });
 
-test("computeMarkerWidth: multi-status task `[done]`", () => {
-  // `* [done] task` → marker zone = `* [done] ` = 9 chars
+test("marker parts: multi-status task `[done]`", () => {
   const { node } = firstListItem("* [done] task");
-  expect(computeMarkerWidth(node, 0)).toBe(9);
+  expect(parts(node)).toEqual({ nest: 0, marker: 2 });
 });
 
-test("computeMarkerWidth: ordered single digit", () => {
+test("marker parts: ordered single digit", () => {
   const { node } = firstListItem("1. item");
-  expect(computeMarkerWidth(node, 0)).toBe(3);
+  expect(parts(node)).toEqual({ nest: 0, marker: 3 });
 });
 
-test("computeMarkerWidth: ordered two digits", () => {
+test("marker parts: ordered two digits", () => {
   const { node } = firstListItem("10. item");
-  expect(computeMarkerWidth(node, 0)).toBe(4);
+  expect(parts(node)).toEqual({ nest: 0, marker: 4 });
 });
 
-test("computeMarkerWidth: ordered three digits", () => {
+test("marker parts: ordered three digits", () => {
   const { node } = firstListItem("100. item");
-  expect(computeMarkerWidth(node, 0)).toBe(5);
+  expect(parts(node)).toEqual({ nest: 0, marker: 5 });
 });
 
-test("computeMarkerWidth: ordered with task", () => {
+test("marker parts: ordered with task", () => {
   const { node } = firstListItem("1. [ ] task");
-  expect(computeMarkerWidth(node, 0)).toBe(7);
+  expect(parts(node)).toEqual({ nest: 0, marker: 3 });
 });
 
-test("computeMarkerWidth: deeply nested unordered (6 leading spaces, level 4)", () => {
+test("marker parts: deeply nested unordered (6 leading spaces)", () => {
   // 6 leading spaces only parses as a ListItem inside a proper nested list,
   // so build a 4-level structure and pick the deepest ListItem.
   const source = "* a\n  * b\n    * c\n      * d";
   const tree = parser.parse(source);
   let deepest: SyntaxNode | null = null;
-  let deepestStart = -1;
   tree.iterate({
     enter: (n) => {
-      if (n.type.name === "ListItem" && n.from > deepestStart) {
-        deepest = n.node;
-        deepestStart = n.from;
-      }
+      if (n.type.name === "ListItem") deepest = n.node;
     },
   });
   if (!deepest) throw new Error("no ListItem");
-  const node: SyntaxNode = deepest;
-  // The deepest item's line starts at offset 14 (the "      * d" line).
-  const lineStart = source.lastIndexOf("\n", node.from) + 1;
-  expect(computeMarkerWidth(node, lineStart)).toBe(8);
+  const lineStart = source.lastIndexOf("\n") + 1;
+  const p = computeMarkerParts(deepest!, lineStart);
+  expect(p && { nest: p.nest, marker: p.marker }).toEqual({
+    nest: 6,
+    marker: 2,
+  });
 });
 
-test("computeMarkerWidth: respects non-zero lineStart", () => {
+test("marker parts: respect a non-zero lineStart", () => {
   // Two-line doc: first line is empty (or text), second line is "* item"
   const source = "intro\n* item";
   const tree = parser.parse(source);
@@ -112,8 +123,13 @@ test("computeMarkerWidth: respects non-zero lineStart", () => {
     },
   });
   if (!node) throw new Error("no ListItem");
-  // Line start for the second line is at offset 6 (after "intro\n").
-  expect(computeMarkerWidth(node, 6)).toBe(2);
+  // Line start for the second line is at offset 6 (after "intro\n"), so the
+  // nesting is measured from there rather than from the document start.
+  const p = computeMarkerParts(node!, 6);
+  expect(p && { nest: p.nest, marker: p.marker }).toEqual({
+    nest: 0,
+    marker: 2,
+  });
 });
 
 function lineStylesFor(doc: string): string[] {
@@ -130,24 +146,29 @@ function lineStylesFor(doc: string): string[] {
   return styles;
 }
 
-test("a list line contributes its marker width as a custom property", () => {
-  expect(lineStylesFor("* one\n")).toEqual(["--sb-list-indent:2ch"]);
-});
-
-test("a nested item contributes the innermost marker width", () => {
-  // Outer then inner for the nested line; the inner one is added last and
-  // therefore wins the concatenated style attribute.
-  expect(lineStylesFor("* one\n  * two\n")).toEqual([
-    "--sb-list-indent:2ch",
-    "--sb-list-indent:2ch",
-    "--sb-list-indent:4ch",
+test("a list line contributes its nesting and its marker separately", () => {
+  // Separately, because only one of the two indents the text: the nesting
+  // moves the words, the marker hangs outside them.
+  expect(lineStylesFor("* one\n")).toEqual([
+    "--sb-list-nest:0ch;--sb-list-marker:2ch",
   ]);
 });
 
-// Guards the invariant the two plugins jointly maintain: the sum of every
-// `--sb-*-indent` contribution on a line must equal the number of columns
-// its leading markup actually occupies, so a wrapped row's padding lines up
-// with the first row's markers. Each plugin alone can't catch a regression
+test("a nested item contributes the innermost item's nesting", () => {
+  // Outer then inner for the nested line; the inner one is added last and
+  // therefore wins the concatenated style attribute. The marker stays one
+  // marker wide at every depth -- nesting is what moves the text.
+  expect(lineStylesFor("* one\n  * two\n")).toEqual([
+    "--sb-list-nest:0ch;--sb-list-marker:2ch",
+    "--sb-list-nest:0ch;--sb-list-marker:2ch",
+    "--sb-list-nest:2ch;--sb-list-marker:2ch",
+  ]);
+});
+
+// Guards the invariant the two plugins jointly maintain: a line's
+// contributions must add up to the number of columns its leading markup
+// actually occupies -- whether a given contribution indents the text or hangs
+// outside it -- so a wrapped row lines up under the first row's words. Each plugin alone can't catch a regression
 // where one starts double-counting what the other already reserves.
 function summedIndentColumns(doc: string): number {
   const listField = listIndentPlugin();
@@ -163,15 +184,29 @@ function summedIndentColumns(doc: string): number {
   for (const field of [listField, quoteField]) {
     state.field(field).between(0, firstLineEnd, (_from, _to, deco) => {
       const style = (deco.spec as any).attributes?.style as string | undefined;
-      // --sb-list-indent:Nch  or  --sb-quote-indent:calc(N * var(--editor-column))
-      const match = style?.match(/:(?:calc\()?(\d+)/);
-      if (match) sum += Number(match[1]);
+      // `--sb-list-nest:Nch;--sb-list-marker:Nch`, or a quote's
+      // `--sb-quote-indent:calc(N * var(--editor-column))`. Every number in
+      // the attribute counts: a list's two halves are an indent and a hang
+      // now, and it is their sum that has to match the markup's width.
+      // Named rather than "every number in the attribute": a quote also
+      // carries `--sb-quote-bar-offset`, which says where to *draw* its bar
+      // and reserves nothing. Counting that too is how this first read 8
+      // columns for `  > * `, which occupies 6.
+      for (const property of [
+        "--sb-list-nest",
+        "--sb-list-marker",
+        "--sb-quote-indent",
+        "--sb-inline-comment-indent",
+      ]) {
+        const m = style?.match(new RegExp(`${property}:(?:calc\\()?(\\d+)`));
+        if (m) sum += Number(m[1]);
+      }
     });
   }
   return sum;
 }
 
-test("list and quote indent contributions sum to the real leading-markup width", () => {
+test("list and quote contributions sum to the real leading-markup width", () => {
   const cases: [string, number][] = [
     ["* item", 2], // `* `
     ["> quoted", 2], // `> `

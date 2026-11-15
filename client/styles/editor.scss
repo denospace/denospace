@@ -97,13 +97,21 @@ $comment-border: 1px;
     // `padding-left` and clobbering the others. The negative text-indent pulls
     // the first row back over the markup that already occupies those columns,
     // leaving wrapped rows hanging at the indent.
-    --sb-indent: calc(var(--sb-list-indent, 0px) + var(--sb-quote-indent, 0px) + var(--sb-inline-comment-indent, 0px));
+    // What indents the *text*: how deeply a list item is nested, a quote's
+    // bar, an inline comment. Not the list marker -- that hangs, below.
+    --sb-indent: calc(var(--sb-list-nest, 0px) + var(--sb-quote-indent, 0px) + var(--sb-inline-comment-indent, 0px));
 
     // How far a line's *first* row hangs back beyond the indent above: the
     // columns its own markup occupies there and nothing else does. Only a
     // revealed heading's `#` run claims any, and it claims them in the
     // heading's own font, which is the font its markers render in.
     --sb-header-hang: 0px;
+
+    // A list marker hangs exactly as a heading's stars do: outside the text
+    // column, ending at its left edge. Summed so a line can only ever have
+    // one of the two.
+    --sb-list-marker: 0px;
+    --sb-hang: calc(var(--sb-header-hang) + var(--sb-list-marker));
 
     // The vertical padding a line adds, named so that what a line paints can
     // span it: a background with a content-box origin stops at the content
@@ -118,7 +126,7 @@ $comment-border: 1px;
     padding-left: var(--sb-indent);
     padding-top: var(--sb-line-pad-y);
     padding-bottom: var(--sb-line-pad-y);
-    text-indent: calc(-1 * (var(--sb-indent) + var(--sb-header-hang)));
+    text-indent: calc(-1 * (var(--sb-indent) + var(--sb-hang)));
 
 
     &.sb-line-h1,
@@ -296,29 +304,37 @@ $comment-border: 1px;
     --sb-inline-comment-indent: calc(3 * var(--editor-column));
   }
 
-  // An ordered item keeps its literal `1.` / `10.`, which is not the bullet
-  // widget -- so it needs boxing of its own to land in the margin, and
-  // right-aligning is what makes a one- and a two-digit number leave their
-  // text at the same place.
-  .sb-line-ol > .sb-li-cursor:first-child {
-    display: inline-block;
-    width: var(--sb-gutter);
-    margin-left: calc(-1 * var(--sb-gutter));
-    text-align: right;
-    padding-right: 0.4ch;
-  }
-
   .cm-list-bullet {
     color: var(--editor-list-bullet-color, inherit);
     white-space: nowrap; // Prevent bullet from being a line-wrap opportunity (fixes #1829)
-    // Right-aligned in a box of its own, so `1.` and `10.` leave the text at
-    // the same place -- which is the whole reason book-mode aligns its
-    // margin right rather than left.
+    // Normalised to the one column the source `-` occupied, so the glyph's
+    // own width -- `•` is not `-` wide in a proportional font -- cannot move
+    // the text. The trailing space follows it, and the two together fill the
+    // hang exactly.
     display: inline-block;
-    width: var(--sb-gutter);
-    margin-left: calc(-1 * var(--sb-gutter));
+    width: 1ch;
     text-align: right;
-    padding-right: 0.4ch;
+  }
+
+  // The marker run -- bullet or number, its trailing space, a task's `[ ]` --
+  // boxed to the columns the line hangs back by and aligned right, so it ends
+  // at the text edge whatever its width. Same treatment as a heading's stars,
+  // and the reason `1.` and `10.` leave their text in one place.
+  .sb-list-marker {
+    display: inline-block;
+    width: var(--sb-list-marker);
+    text-align: right;
+    white-space: pre;
+    overflow: visible;
+  }
+
+  // The gap between an unordered bullet and its words. One column, so the
+  // bullet's column plus this one fill the hang exactly and the words start
+  // where every other line's do.
+  .sb-list-space {
+    display: inline-block;
+    width: calc(var(--sb-list-marker) - 1ch);
+    white-space: pre;
   }
 
   .cm-task-checked,

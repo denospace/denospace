@@ -844,8 +844,18 @@ expressed in `ch`, a lighter weight changes what `ch` measures, and the box
 and the indent then disagree by a pixel or two — which is a heading that
 slides as you click it.
 
-`--sb-gutter` (2.6ch) is the margin's width for list markers;
-`--editor-heading-margin-color` is the muted tone.
+List markers hang the same way. A list item's left columns split in two,
+because they want opposite treatment: how deeply it is **nested** indents the
+text, while the **marker** — bullet or number, and its trailing space — hangs
+outside it. So `- a bullet`, `1. first` and `10. tenth` all start their words
+exactly where prose does, and a nested item is indented by its nesting and
+nothing else.
+
+A task's `[ ]` is deliberately *not* part of the marker: it is a control you
+click and a qualifier of the words after it, so it sits at the text edge with
+the words following. Only the bullet hangs.
+
+`--editor-heading-margin-color` is the muted tone for the stars.
 
 This replaced a stepped indent with one hairline guide per level crossed.
 That read well in a code editor and badly in prose: deep content started a

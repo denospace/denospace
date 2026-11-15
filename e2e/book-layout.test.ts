@@ -19,10 +19,13 @@ Body of delta.
 
 - a bullet
 - another bullet
+  - nested bullet
 
 1. first
 2. second
 10. tenth
+
+- [ ] a task
 `;
 
 test.describe("Book layout", () => {
@@ -47,7 +50,8 @@ test.describe("Book layout", () => {
         while ((node = walker.nextNode())) {
           if (
             (node.parentElement as Element | null)?.closest(
-              ".sb-header-margin, .cm-list-bullet, .sb-li-cursor",
+              ".sb-header-margin, .sb-list-marker, .sb-list-space, " +
+                ".cm-list-bullet",
             )
           ) {
             continue;
@@ -173,6 +177,52 @@ test.describe("Book layout", () => {
     // gutter is what keeps "first" and "tenth" starting at the same x.
     expect(Math.abs(edgeOf("first") - edgeOf("tenth"))).toBeLessThan(1);
     expect(Math.abs(edgeOf("second") - edgeOf("tenth"))).toBeLessThan(1);
+  });
+
+  test("list text starts where prose does, markers in the margin", async ({
+    sbPage,
+    sbServer,
+  }) => {
+    // The point of pulling the markers out: a list is prose with a mark
+    // beside it, so its words belong on the same left edge as every other
+    // line's. Nesting still indents, because that is structure rather than
+    // decoration.
+    await gotoSilverBulletPage(sbPage, sbServer, "20261115T090000--book.org");
+    await expect(sbPage.locator("#sb-editor .cm-content")).toContainText(
+      "a task",
+      { timeout: 20_000 },
+    );
+    const at = await edges(sbPage);
+    const base = at["Preamble before any se"];
+    for (const key of ["a bullet", "another bullet", "first", "tenth"]) {
+      const found = Object.keys(at).find((k) => k.startsWith(key));
+      expect(found, `no line starting ${key}: ${Object.keys(at)}`).toBeTruthy();
+      expect(Math.abs(at[found!] - base)).toBeLessThan(1);
+    }
+    // A nested item is indented by its nesting and nothing else.
+    const nested = Object.keys(at).find((k) => k.startsWith("nested bullet"))!;
+    expect(at[nested]).toBeGreaterThan(base + 4);
+    expect(at[nested]).toBeLessThan(base + 20);
+  });
+
+  test("a task's checkbox sits at the text edge, not in the margin", async ({
+    sbPage,
+    sbServer,
+  }) => {
+    // The `[ ]` is a control you click and a qualifier of the words after it,
+    // so it belongs in the text column -- which is also where Bear and iA
+    // Writer put one. Only the bullet hangs.
+    await gotoSilverBulletPage(sbPage, sbServer, "20261115T090000--book.org");
+    await expect(sbPage.locator("#sb-editor .cm-content")).toContainText(
+      "a task",
+      { timeout: 20_000 },
+    );
+    const base = (await edges(sbPage))["Preamble before any se"];
+    const box = await sbPage.evaluate(() => {
+      const cb = document.querySelector("#sb-editor .sb-checkbox")!;
+      return cb.getBoundingClientRect().left;
+    });
+    expect(Math.abs(box - base)).toBeLessThan(1);
   });
 
   test("a bullet hangs left of the text, not at it", async ({
