@@ -20,6 +20,7 @@ import { htmlBlockPlugin, htmlInlinePlugin } from "./html_widget.ts";
 import { linkPlugin } from "./link.ts";
 import { listBulletPlugin } from "./list.ts";
 import { listIndentPlugin } from "./list_indent.ts";
+import { keywordHangPlugin } from "./keyword_hang.ts";
 import { luaDirectivePlugin } from "./lua_directive.ts";
 import { tablePlugin } from "./table.ts";
 import { taskListPlugin } from "./task.ts";
@@ -80,6 +81,7 @@ export function cleanModePlugins(client: Client) {
     }),
     listBulletPlugin(),
     listIndentPlugin(),
+    keywordHangPlugin(),
     htmlInlinePlugin(client),
     htmlBlockPlugin(client),
     tablePlugin(client),

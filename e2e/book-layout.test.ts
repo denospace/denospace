@@ -51,7 +51,7 @@ test.describe("Book layout", () => {
           if (
             (node.parentElement as Element | null)?.closest(
               ".sb-header-margin, .sb-list-marker, .sb-list-space, " +
-                ".cm-list-bullet",
+                ".cm-list-bullet, .sb-keyword-hang",
             )
           ) {
             continue;
@@ -203,6 +203,32 @@ test.describe("Book layout", () => {
     const nested = Object.keys(at).find((k) => k.startsWith("nested bullet"))!;
     expect(at[nested]).toBeGreaterThan(base + 4);
     expect(at[nested]).toBeLessThan(base + 20);
+  });
+
+  test("front matter values land on the text edge too", async ({
+    sbPage,
+    sbServer,
+  }) => {
+    // `#+key:` is markup, so it hangs; the value is content, so it sits in
+    // the column. Denote already pads these lines so the values line up with
+    // each other -- this is what lines them up with the prose below.
+    await gotoSilverBulletPage(sbPage, sbServer, "20261115T090000--book.org");
+    await expect(sbPage.locator("#sb-editor .cm-content")).toContainText(
+      "Preamble",
+      { timeout: 20_000 },
+    );
+    const at = await edges(sbPage);
+    const base = at["Preamble before any se"];
+    // `#+title:` and `#+identifier:` are different lengths; both values land
+    // on the edge regardless.
+    for (const key of ["Book", "20261115T090000"]) {
+      const found = Object.keys(at).find((k) => k.startsWith(key));
+      expect(
+        found,
+        `no value starting ${key}: ${Object.keys(at)}`,
+      ).toBeTruthy();
+      expect(Math.abs(at[found!] - base)).toBeLessThan(1);
+    }
   });
 
   test("a task's checkbox sits at the text edge, not in the margin", async ({
