@@ -1,6 +1,7 @@
 import {
   getNameFromPath,
   type Path,
+  pathFromPageName,
 } from "@silverbulletmd/silverbullet/lib/ref";
 import { fileName } from "@silverbulletmd/silverbullet/lib/resolve";
 import { index, mq, space } from "@silverbulletmd/silverbullet/syscalls";
@@ -88,9 +89,17 @@ async function flushPending(): Promise<void> {
     return;
   }
 
+  // `pathFromPageName`, not `${page}.md`: an Org page's name already carries
+  // its extension, so appending one produced `...note.org.md`. That path
+  // still resolves back to the right page -- which is why this looked like
+  // it worked -- but the parser is chosen by extension, so the file was
+  // re-indexed as Markdown. An Org link parses as nothing there, so every
+  // relation the page had was cleared on the way in and none were written
+  // on the way out: renaming a note emptied the linked mentions of every
+  // note that linked to it.
   await mq.batchSend(
     "indexQueue",
-    [...pages].map((page) => `${page}.md`),
+    [...pages].map((page) => pathFromPageName(page) as string),
   );
 }
 
