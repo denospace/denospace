@@ -2,7 +2,8 @@ import { syntaxTree } from "@codemirror/language";
 import type { EditorState, Range } from "@codemirror/state";
 import { Decoration, WidgetType } from "@codemirror/view";
 import { hasLinkScheme } from "@silverbulletmd/silverbullet/lib/link_syntax";
-import type { Path } from "@silverbulletmd/silverbullet/lib/ref";
+import { type Path, parseToRef } from "@silverbulletmd/silverbullet/lib/ref";
+import { resolvePath } from "@silverbulletmd/silverbullet/lib/resolve_path";
 import {
   type Transclusion,
   resolveTransclusionUrl,
@@ -68,7 +69,28 @@ export function orgInlineMedia(
     client.currentPath() as Path,
     client.clientSystem.allKnownFiles,
   );
+  // The media type comes from the *extension*, so a link to a `.png` that is
+  // not there still yields an `<img>` — a 0x0 broken one, drawn over the
+  // link's own text, which reads as "the image feature is broken" rather than
+  // "that file does not exist". A file that is not in the space is not media;
+  // the link plugin draws it as a dangling link instead.
+  if (!mediaFileExists(transclusion.url, client)) {
+    return null;
+  }
   return createMediaElement(transclusion) ? transclusion : null;
+}
+
+/** Whether a space-local transclusion target resolves to a file that exists. */
+function mediaFileExists(url: string, client: Client): boolean {
+  const ref = parseToRef(url);
+  if (!ref || ref.path === "") {
+    return false;
+  }
+  return resolvePath(
+    ref.path,
+    client.currentPath() as Path,
+    client.clientSystem.allKnownFiles,
+  ).exists;
 }
 
 /**

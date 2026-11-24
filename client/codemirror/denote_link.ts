@@ -23,7 +23,12 @@ import {
   zoteroWebUrl,
 } from "@silverbulletmd/silverbullet/lib/bibtex";
 import { orgInlineMedia } from "./org_image.ts";
-import { encodePageURI } from "@silverbulletmd/silverbullet/lib/ref";
+import {
+  encodePageURI,
+  type Path,
+  parseToRef,
+} from "@silverbulletmd/silverbullet/lib/ref";
+import { resolvePath } from "@silverbulletmd/silverbullet/lib/resolve_path";
 import type { PageMeta } from "@silverbulletmd/silverbullet/type/index";
 import type { Client } from "../client.ts";
 import { getVimModule } from "../vim_loader.ts";
@@ -316,9 +321,65 @@ export function denoteLinkPlugin(client: Client): Extension {
         }
         const target = state.sliceDoc(targetNode.from, targetNode.to);
         if (!isDenote && hasLinkScheme(target)) {
-          // `file:` addresses something in this space, and a description-less
-          // one is an image; both belong to other plugins.
+          // `file:` addresses something in this space. An image belongs to the
+          // inline-image plugin; everything else — a described link, a file
+          // type that is not media, a file that is not there — is drawn here
+          // rather than left as raw source, so a dangling one looks dangling.
           if (target.startsWith("file:")) {
+            if (orgInlineMedia(state, node, client) !== null) {
+              return;
+            }
+            const filePath = target.slice(5);
+            const descriptionNode = node.getChild("OrgLinkDescription");
+            const description = descriptionNode
+              ? state.sliceDoc(descriptionNode.from, descriptionNode.to)
+              : "";
+            const ref = parseToRef(filePath);
+            const resolution = ref?.path
+              ? resolvePath(
+                  ref.path,
+                  client.currentPath() as Path,
+                  client.clientSystem.allKnownFiles,
+                )
+              : undefined;
+            const exists = !!resolution?.exists;
+            const resolved = resolution?.path ?? filePath;
+            widgets.push(
+              Decoration.replace({
+                widget: new LinkWidget({
+                  from,
+                  text: description || filePath,
+                  title: exists
+                    ? `Open ${resolved}`
+                    : `File not found: ${filePath}`,
+                  href: exists ? encodePageURI(resolved) : undefined,
+                  cssClass: exists
+                    ? "sb-wiki-link sb-denote-link"
+                    : "sb-wiki-link sb-denote-link sb-wiki-link-page-missing",
+                  callback: (e) => {
+                    if (!exists) {
+                      client.ui.flashNotification(
+                        `File not found: ${filePath}`,
+                        "error",
+                      );
+                      return;
+                    }
+                    if (e.altKey) {
+                      client.editorView.dispatch({
+                        selection: { anchor: from },
+                      });
+                      client.focus();
+                      return;
+                    }
+                    void client.navigate(
+                      { path: resolved as `${string}.${string}` },
+                      false,
+                      e.ctrlKey || e.metaKey,
+                    );
+                  },
+                }),
+              }).range(from, to),
+            );
             return;
           }
           // `zotero:KEY` names an item: it reads as the item's title when it

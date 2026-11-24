@@ -55,8 +55,14 @@ test.describe("Org inline images", () => {
     // Org shows an image only for a link with no description.
     const images = sbPage.locator("#sb-editor .sb-org-inline-image img");
     await expect(images).toHaveCount(2, { timeout: 20_000 });
-    // The described link is still rendered as its words.
-    await expect(editor).toContainText("a screenshot");
+    // The described link is rendered as its words — and as a *link*, not as
+    // raw source, which would also have contained the words.
+    const described = editor.locator("a.sb-wiki-link", {
+      hasText: "a screenshot",
+    });
+    await expect(described).toBeVisible({ timeout: 20_000 });
+    await expect(described).not.toHaveClass(/sb-wiki-link-page-missing/);
+    await expect(editor).not.toContainText("[[file:shot.png][a screenshot]]");
 
     // Both images actually loaded, rather than showing a broken icon.
     for (let i = 0; i < 2; i++) {
@@ -243,5 +249,71 @@ test.describe("Pasting into an Org page", () => {
       );
     });
     await expect(editor).toContainText("**bold thing**", { timeout: 20_000 });
+  });
+});
+
+test.describe("A file: link to something that is not there", () => {
+  test.use({
+    spaceFiles: {
+      "index.md": "# Index\n",
+      "20260306T000000--dangling__meta.org": `#+title:      Dangling
+#+identifier: 20260306T000000
+
+Plain: [[file:nothere.png]]
+
+Described: [[file:nothere.png][gone]]
+
+NotMedia: [[file:notes.odt]]
+`,
+    },
+  });
+
+  test("is drawn as a dangling link, not as a broken image", async ({
+    sbPage,
+    sbServer,
+  }) => {
+    // The media type is read from the extension, so a link to a `.png` that
+    // does not exist used to yield a 0x0 broken `<img>` drawn over the link's
+    // own text. That reads as "images are broken" rather than "that file is
+    // not there" -- which is exactly how it was misread in practice.
+    await gotoSilverBulletPage(
+      sbPage,
+      sbServer,
+      "20260306T000000--dangling__meta.org",
+    );
+    const editor = sbPage.locator("#sb-editor .cm-content");
+    await expect(editor).toContainText("Plain:");
+
+    const dead = editor.locator("a.sb-wiki-link", { hasText: "nothere.png" });
+    await expect(dead).toBeVisible({ timeout: 20_000 });
+    await expect(dead).toHaveClass(/sb-wiki-link-page-missing/);
+
+    // A description is used as the link's text, and still marked missing.
+    const described = editor.locator("a.sb-wiki-link", { hasText: "gone" });
+    await expect(described).toBeVisible();
+    await expect(described).toHaveClass(/sb-wiki-link-page-missing/);
+
+    // No broken image anywhere, and no raw source left showing.
+    await expect(
+      sbPage.locator("#sb-editor .sb-org-inline-image img"),
+    ).toHaveCount(0);
+    await expect(editor).not.toContainText("[[file:");
+  });
+
+  test("a file type that is not media is a link, not source", async ({
+    sbPage,
+    sbServer,
+  }) => {
+    await gotoSilverBulletPage(
+      sbPage,
+      sbServer,
+      "20260306T000000--dangling__meta.org",
+    );
+    const editor = sbPage.locator("#sb-editor .cm-content");
+    await expect(editor).toContainText("NotMedia:");
+    // `.odt` is not media and is not in the space, so it is a dangling link
+    // rather than the raw `[[file:…]]` it used to show as.
+    const odt = editor.locator("a.sb-wiki-link", { hasText: "notes.odt" });
+    await expect(odt).toBeVisible({ timeout: 20_000 });
   });
 });
