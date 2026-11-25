@@ -135,7 +135,7 @@ mod tests {
         assert_eq!(c.space_folder, "/tmp/space");
         assert_eq!(c.port, 8080);
         assert_eq!(c.bind_host, "127.0.0.1");
-        assert_eq!(c.index_page, "index");
+        assert_eq!(c.index_page, silverbullet_server::DEFAULT_INDEX_PAGE);
         assert_eq!(c.space_name, "Denospace");
     }
 

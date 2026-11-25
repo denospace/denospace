@@ -42,7 +42,7 @@ async fn boots_and_serves_ping_config_and_bundle() {
         .json()
         .await
         .unwrap();
-    assert_eq!(cfg["indexPage"], "index");
+    assert_eq!(cfg["indexPage"], silverbullet_server::DEFAULT_INDEX_PAGE);
 
     // The SPA shell is served (templated, no leftover placeholders).
     let html = client
@@ -60,17 +60,22 @@ async fn boots_and_serves_ping_config_and_bundle() {
     );
     assert!(!html.contains("{{"), "unresolved placeholder in shell");
 
-    // The empty space was seeded with the rich index.md template (parity with
-    // the old single-space-only `DEFAULT_INDEX_MD`), not a bare placeholder.
+    // An empty space is seeded with the shipped Org home page -- the file the
+    // default index page names -- rather than a bare placeholder, and in the
+    // language its own extension promises.
     let index = client
-        .get(format!("{base}/.fs/index.md"))
+        .get(format!("{base}/.fs/{}", silverbullet_server::DEFAULT_INDEX_PAGE))
         .send()
         .await
         .unwrap();
     assert_eq!(index.status(), reqwest::StatusCode::OK);
     let index_body = index.text().await.unwrap();
     assert!(
-        index_body.contains("Welcome to the wondrous world of SilverBullet"),
+        index_body.starts_with("#+title:      Home"),
+        "seeded index must be the Org home, got: {index_body}"
+    );
+    assert!(
+        index_body.contains("#+identifier: 00000000T000000"),
         "got: {index_body}"
     );
 

@@ -500,7 +500,7 @@ mod tests {
 
         assert_eq!(
             git_out(dir.path(), &["log", "-1", "--format=%an <%ae>|%cn"]),
-            "Bob <bob@denospace.local>|SilverBullet"
+            "Bob <bob@denospace.local>|Denospace"
         );
         assert_eq!(git_out(dir.path(), &["log", "--format=%an"]), "Bob\nAlice");
         assert_eq!(

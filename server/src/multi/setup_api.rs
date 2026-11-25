@@ -27,6 +27,8 @@ pub struct SetupState {
     pub client_bundle: Box<dyn SpacePrimitives>,
     /// Seeded into a first space's index page (mirrors admin/single mode).
     pub index_template: String,
+    /// Used instead when that index page is an Org file.
+    pub index_template_org: String,
     pub on_complete: Box<dyn Fn() + Send + Sync>,
     /// Serializes `POST /.setup/api/complete`. `run_setup`'s `is_configured`
     /// check-then-write isn't atomic on its own — argon2 hashing the admin
@@ -96,9 +98,10 @@ async fn handle_complete(
 
     let root = state.root.clone();
     let tmpl = state.index_template.clone();
+    let tmpl_org = state.index_template_org.clone();
     // `run_setup` hashes the admin password (argon2, deliberately slow) and
     // touches the filesystem — keep it off the async worker.
-    let result = run_blocking(move || Ok(run_setup(&root, &req, &tmpl))).await;
+    let result = run_blocking(move || Ok(run_setup(&root, &req, &tmpl, &tmpl_org))).await;
     match result {
         Ok(Ok(())) => {
             (state.on_complete)();
@@ -178,6 +181,7 @@ mod tests {
             root: dir.path().to_path_buf(),
             client_bundle: Box::new(bundle),
             index_template: "# Hello\n".into(),
+            index_template_org: "#+title: Test\n".to_string(),
             on_complete: Box::new(move || flag.store(true, Ordering::SeqCst)),
             complete_lock: tokio::sync::Mutex::new(()),
         })

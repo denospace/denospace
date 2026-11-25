@@ -139,7 +139,7 @@ mod tests {
             .unwrap();
         let v: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
         assert_eq!(v["spaceName"], "Test");
-        assert_eq!(v["indexPage"], "index");
+        assert_eq!(v["indexPage"], crate::DEFAULT_INDEX_PAGE);
         assert_eq!(v["readOnly"], false);
     }
 

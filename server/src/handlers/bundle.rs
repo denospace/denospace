@@ -525,7 +525,7 @@ mod tests {
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
         let html = body_string(resp).await;
-        assert!(html.contains("<title>SilverBullet</title>"), "{html}");
+        assert!(html.contains("<title>Denospace</title>"), "{html}");
         // Placeholders resolved, content empty (client renders).
         assert!(!html.contains("{{"), "unresolved placeholder: {html}");
         assert!(
@@ -535,8 +535,15 @@ mod tests {
     }
 
     fn read_only_public_state() -> Arc<ServerState> {
+        read_only_public_state_with_index("index")
+    }
+
+    /// The index page is stated rather than inherited: these tests are about
+    /// how an empty path resolves, not about which page ships as the default.
+    fn read_only_public_state_with_index(index_page: &str) -> Arc<ServerState> {
         let mut s = test_state();
         s.boot_config.read_only = true;
+        s.boot_config.index_page = index_page.to_string();
         s.authorizer = None;
         Arc::new(s)
     }

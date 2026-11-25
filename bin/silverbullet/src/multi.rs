@@ -100,6 +100,7 @@ pub async fn build_multi_stack(
         disable_service_worker: config.disable_service_worker,
         shell_disabled: config.shell_disabled,
         index_template: crate::DEFAULT_INDEX_MD.to_string(),
+        index_template_org: crate::DEFAULT_INDEX_ORG.to_string(),
         shutdown: shutdown_rx,
         space_prefixes: Default::default(),
     };

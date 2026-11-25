@@ -658,7 +658,7 @@ mod tests {
             .map(|l| l.to_string())
             .collect();
         authors.sort();
-        assert_eq!(authors, vec!["External", "Denospace", "alice"]);
+        assert_eq!(authors, vec!["Denospace", "External", "alice"]);
     }
 
     /// Commits `a.md` marked as an account named `author` and returns the
@@ -908,7 +908,7 @@ mod tests {
         assert!(files.contains("unseen.md"), "{files}");
         assert_eq!(
             git_out(dir.path(), &["log", "-1", "--format=%an %s"]),
-            "SilverBullet Manual snapshot"
+            "Denospace Manual snapshot"
         );
     }
 

@@ -62,6 +62,10 @@ pub struct InstanceDeps {
     /// crate supplies the rich `space_template/index.md`; test helpers in
     /// this crate can use any short string.
     pub index_template: String,
+    /// Seeded instead of `index_template` when the space's index page is an
+    /// Org file. Both are carried because the choice is per space, not per
+    /// deployment: each space names its own index page.
+    pub index_template_org: String,
     /// Process-wide shutdown signal, cloned into every instance's
     /// `ServerState::shutdown`. See that field's doc comment.
     pub shutdown: Option<tokio::sync::watch::Receiver<()>>,
@@ -256,7 +260,13 @@ pub fn resolve_folder(root: &Path, id: &str, folder: &str) -> PathBuf {
 /// already-populated space costs O(1), not a full listing, on every boot. Uses `DiskSpacePrimitives::write_file`
 /// for the actual write so nested index pages (e.g. `notes/index`) get their
 /// parent directories created for free.
-pub fn seed_index(folder: &Path, index_page: &str, content: &str, space_ignore: &str) {
+pub fn seed_index(
+    folder: &Path,
+    index_page: &str,
+    markdown_template: &str,
+    org_template: &str,
+    space_ignore: &str,
+) {
     let disk = match DiskSpacePrimitives::new(folder, space_ignore) {
         Err(e) => {
             // Unreadable/missing folder: do nothing (matches the old
@@ -277,6 +287,15 @@ pub fn seed_index(folder: &Path, index_page: &str, content: &str, space_ignore: 
         index_page.to_string()
     } else {
         format!("{index_page}.md")
+    };
+    // The content has to match the extension the name just decided. Seeding
+    // the Markdown template into `...--home.org` would hand a new space a
+    // first page written in the wrong language -- which is what happened
+    // before this took both templates rather than one.
+    let content = if path.ends_with(".org") {
+        org_template
+    } else {
+        markdown_template
     };
     if let Err(e) = disk.write_file(&path, content.as_bytes(), None) {
         tracing::warn!("could not seed index page {path}: {e}");
@@ -569,6 +588,7 @@ mod tests {
             disable_service_worker: true,
             shell_disabled: false,
             index_template: "# Test space\n".into(),
+            index_template_org: "#+title: Test space\n".into(),
             shutdown: None,
             space_prefixes: Default::default(),
         }
@@ -1068,14 +1088,14 @@ mod tests {
     #[test]
     fn seed_index_creates_page_only_in_empty_space() {
         let dir = tempfile::tempdir().unwrap();
-        seed_index(dir.path(), "index", "# Hello\n", "");
+        seed_index(dir.path(), "index", "# Hello\n", "#+title: Home\n", "");
         assert_eq!(
             std::fs::read_to_string(dir.path().join("index.md")).unwrap(),
             "# Hello\n"
         );
         // Non-empty: do not overwrite/add.
         std::fs::write(dir.path().join("other.md"), "x").unwrap();
-        seed_index(dir.path(), "home", "# Hello\n", "");
+        seed_index(dir.path(), "home", "# Hello\n", "#+title: Home\n", "");
         assert!(!dir.path().join("home.md").exists());
     }
 
@@ -1089,14 +1109,14 @@ mod tests {
             "#+title: A note\n",
         )
         .unwrap();
-        seed_index(dir.path(), "index", "# Hello\n", "");
+        seed_index(dir.path(), "index", "# Hello\n", "#+title: Home\n", "");
         assert!(!dir.path().join("index.md").exists());
     }
 
     #[test]
     fn seed_index_honours_an_index_page_that_names_its_extension() {
         let dir = tempfile::tempdir().unwrap();
-        seed_index(dir.path(), "home.org", "#+title: Home\n", "");
+        seed_index(dir.path(), "home.org", "# Hello\n", "#+title: Home\n", "");
         assert_eq!(
             std::fs::read_to_string(dir.path().join("home.org")).unwrap(),
             "#+title: Home\n"
@@ -1114,7 +1134,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         std::fs::create_dir_all(dir.path().join("sub")).unwrap();
         std::fs::write(dir.path().join("sub/page.md"), "hi").unwrap();
-        seed_index(dir.path(), "index", "# Hello\n", "");
+        seed_index(dir.path(), "index", "# Hello\n", "#+title: Home\n", "");
         assert!(
             !dir.path().join("index.md").exists(),
             "space with markdown only in a subdirectory must not be seeded"
@@ -1129,7 +1149,7 @@ mod tests {
         // `.md` file is gitignored is still treated as empty and gets seeded.
         let dir = tempfile::tempdir().unwrap();
         std::fs::write(dir.path().join("ignored.md"), "x").unwrap();
-        seed_index(dir.path(), "index", "# Hello\n", "ignored.md");
+        seed_index(dir.path(), "index", "# Hello\n", "#+title: Home\n", "ignored.md");
         assert!(
             dir.path().join("index.md").exists(),
             "a space whose only .md is gitignored should still be seeded"
@@ -1141,7 +1161,7 @@ mod tests {
         // SB_INDEX_PAGE=notes/index: the seeded file's parent directory must
         // be created (DiskSpacePrimitives::write_file does this for free).
         let dir = tempfile::tempdir().unwrap();
-        seed_index(dir.path(), "notes/index", "# Hello\n", "");
+        seed_index(dir.path(), "notes/index", "# Hello\n", "#+title: Home\n", "");
         assert_eq!(
             std::fs::read_to_string(dir.path().join("notes/index.md")).unwrap(),
             "# Hello\n"

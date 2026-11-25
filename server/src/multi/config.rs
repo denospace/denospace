@@ -209,7 +209,7 @@ mod tests {
         assert!(b.members.is_empty());
         assert!(!b.read_only);
         assert!(b.shell.enabled); // default on
-        assert_eq!(b.index_page, "index");
+        assert_eq!(b.index_page, crate::DEFAULT_INDEX_PAGE);
         assert_eq!(b.folder, ""); // empty = resolved elsewhere
     }
 

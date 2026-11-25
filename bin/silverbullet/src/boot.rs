@@ -70,6 +70,7 @@ pub(crate) async fn run_setup_server(
         root: root.clone(),
         client_bundle: Box::new(EmbeddedSpace::<ClientAssets>::new()),
         index_template: crate::DEFAULT_INDEX_MD.to_string(),
+        index_template_org: crate::DEFAULT_INDEX_ORG.to_string(),
         on_complete: Box::new(move || signal.notify_one()),
         complete_lock: tokio::sync::Mutex::new(()),
     });

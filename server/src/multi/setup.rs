@@ -118,6 +118,7 @@ pub fn run_setup(
     root: &Path,
     req: &SetupRequest,
     index_template: &str,
+    index_template_org: &str,
 ) -> Result<(), Vec<FieldError>> {
     if is_configured(root) {
         return Err(err("", "this server is already configured"));
@@ -204,6 +205,7 @@ pub fn run_setup(
             &folder_path,
             &cfg.index_page,
             index_template,
+            index_template_org,
             &cfg.space_ignore,
         );
         spaces.spaces.insert(id, cfg);
@@ -257,7 +259,7 @@ mod tests {
             prefix: "/".into(),
             folder: String::new(),
         }));
-        run_setup(dir.path(), &request, "# Hello\n").unwrap();
+        run_setup(dir.path(), &request, "# Hello\n", "#+title: Home\n").unwrap();
 
         let users_path = dir.path().join(USERS_FILE);
         assert!(users_path.exists());
@@ -283,8 +285,8 @@ mod tests {
 
         let folder = resolve_folder(dir.path(), id, &space.folder);
         assert_eq!(
-            std::fs::read_to_string(folder.join("index.md")).unwrap(),
-            "# Hello\n"
+            std::fs::read_to_string(folder.join(crate::DEFAULT_INDEX_PAGE)).unwrap(),
+            "#+title: Home\n"
         );
     }
 
@@ -296,7 +298,7 @@ mod tests {
             prefix: "/work".into(),
             folder: "custom/work".into(),
         }));
-        run_setup(dir.path(), &request, "# Work\n").unwrap();
+        run_setup(dir.path(), &request, "# Work\n", "#+title: Home\n").unwrap();
 
         let cfg = MultiConfig::load(&dir.path().join(SPACES_FILE)).unwrap();
         assert_eq!(cfg.spaces.len(), 1);
@@ -304,8 +306,8 @@ mod tests {
         assert!(matches!(&space.binding, Binding::Prefix { prefix } if prefix == "/work"));
         assert_eq!(space.folder, "custom/work");
         assert_eq!(
-            std::fs::read_to_string(dir.path().join("custom/work/index.md")).unwrap(),
-            "# Work\n"
+            std::fs::read_to_string(dir.path().join("custom/work").join(crate::DEFAULT_INDEX_PAGE)).unwrap(),
+            "#+title: Home\n"
         );
     }
 
@@ -321,15 +323,15 @@ mod tests {
             prefix: "/".into(),
             folder: abs.to_string_lossy().to_string(),
         }));
-        run_setup(dir.path(), &request, "# Hello\n").unwrap();
+        run_setup(dir.path(), &request, "# Hello\n", "#+title: Home\n").unwrap();
 
         let cfg = MultiConfig::load(&dir.path().join(SPACES_FILE)).unwrap();
         let (_, space) = cfg.spaces.iter().next().unwrap();
         assert_eq!(space.folder, "spaces/notes");
         // ...and it still resolves to the same directory, seeded index and all.
         assert_eq!(
-            std::fs::read_to_string(abs.join("index.md")).unwrap(),
-            "# Hello\n"
+            std::fs::read_to_string(abs.join(crate::DEFAULT_INDEX_PAGE)).unwrap(),
+            "#+title: Home\n"
         );
     }
 
@@ -346,12 +348,12 @@ mod tests {
             prefix: "/".into(),
             folder: folder.clone(),
         }));
-        run_setup(dir.path(), &request, "# Hello\n").unwrap();
+        run_setup(dir.path(), &request, "# Hello\n", "#+title: Home\n").unwrap();
 
         let cfg = MultiConfig::load(&dir.path().join(SPACES_FILE)).unwrap();
         let (_, space) = cfg.spaces.iter().next().unwrap();
         assert_eq!(space.folder, folder);
-        assert!(abs.join("index.md").exists());
+        assert!(abs.join(crate::DEFAULT_INDEX_PAGE).exists());
     }
 
     #[test]
@@ -362,7 +364,7 @@ mod tests {
             prefix: "/work".into(),
             folder: "custom/work".into(),
         }));
-        run_setup(dir.path(), &request, "# Work\n").unwrap();
+        run_setup(dir.path(), &request, "# Work\n", "#+title: Home\n").unwrap();
 
         let cfg = MultiConfig::load(&dir.path().join(SPACES_FILE)).unwrap();
         let (_, space) = cfg.spaces.iter().next().unwrap();
@@ -372,7 +374,7 @@ mod tests {
     #[test]
     fn setup_without_a_first_space_writes_no_spaces() {
         let dir = tempfile::tempdir().unwrap();
-        run_setup(dir.path(), &req(None), "# Hello\n").unwrap();
+        run_setup(dir.path(), &req(None), "# Hello\n", "#+title: Home\n").unwrap();
         assert!(UserStore::open(dir.path()).unwrap().is_some());
         let cfg = MultiConfig::load(&dir.path().join(SPACES_FILE)).unwrap();
         assert!(cfg.spaces.is_empty());
@@ -383,7 +385,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let mut request = req(None);
         request.admin_password = "".into();
-        let errs = run_setup(dir.path(), &request, "x").unwrap_err();
+        let errs = run_setup(dir.path(), &request, "x", "#+title: Home\n").unwrap_err();
         assert!(errs.iter().any(|e| e.field == "adminPassword"), "{errs:?}");
         assert!(!is_configured(dir.path()));
     }
@@ -394,12 +396,12 @@ mod tests {
 
         let mut request = req(None);
         request.admin_full_name = "Ada <Lovelace>".into();
-        let errs = run_setup(dir.path(), &request, "x").unwrap_err();
+        let errs = run_setup(dir.path(), &request, "x", "#+title: Home\n").unwrap_err();
         assert_eq!(errs[0].field, "adminFullName", "{errs:?}");
 
         let mut request = req(None);
         request.admin_email = "ada @example.org".into();
-        let errs = run_setup(dir.path(), &request, "x").unwrap_err();
+        let errs = run_setup(dir.path(), &request, "x", "#+title: Home\n").unwrap_err();
         assert_eq!(errs[0].field, "adminEmail", "{errs:?}");
 
         assert!(!is_configured(dir.path()));
@@ -411,7 +413,7 @@ mod tests {
         for bad in ["", "  ", "with:colon", "with/slash"] {
             let mut request = req(None);
             request.admin_username = bad.into();
-            let errs = run_setup(dir.path(), &request, "x").unwrap_err();
+            let errs = run_setup(dir.path(), &request, "x", "#+title: Home\n").unwrap_err();
             assert!(
                 errs.iter().any(|e| e.field == "adminUsername"),
                 "{bad:?}: {errs:?}"
@@ -424,7 +426,7 @@ mod tests {
     fn rejects_when_already_configured() {
         let dir = tempfile::tempdir().unwrap();
         UserStore::create_empty(dir.path()).unwrap();
-        let errs = run_setup(dir.path(), &req(None), "x").unwrap_err();
+        let errs = run_setup(dir.path(), &req(None), "x", "#+title: Home\n").unwrap_err();
         assert!(errs.iter().any(|e| e.field.is_empty()), "{errs:?}");
     }
 }
