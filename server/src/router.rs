@@ -98,9 +98,42 @@ async fn count_requests(
     next.run(req).await
 }
 
+/// 404 any `/.fs/` path with a dot-prefixed component. Listings already hide
+/// these, but a direct read would otherwise still serve them — and a space
+/// folder is routinely a git work tree, so `.git/config` would hand out the
+/// credentials embedded in a remote URL. Matches on the *decoded* path from
+/// the extractor, so a percent-encoded separator cannot smuggle a component
+/// past the check. Backslash counts as a separator for Windows spaces.
+async fn refuse_hidden_fs_paths(
+    axum::extract::Path(path): axum::extract::Path<String>,
+    req: Request,
+    next: Next,
+) -> Response {
+    if path.split(['/', '\\']).any(|part| part.starts_with('.')) {
+        return axum::http::StatusCode::NOT_FOUND.into_response();
+    }
+    next.run(req).await
+}
+
 /// Build the HTTP router for the file/config/bundle endpoints. Protected routes
 /// require authorization when an authorizer is configured.
 pub fn build_router(state: Arc<ServerState>) -> Router {
+    // Every per-file route under `/.fs/`, grouped so one `route_layer` guards
+    // them all. The collection routes `/.fs` and `/.fs/` stay outside it:
+    // they take no path and the listing filters hidden entries itself.
+    let fs_files = Router::new()
+        .route(
+            "/.fs/{*path}",
+            get(fs::handle_fs_get).layer(CompressionLayer::new()),
+        )
+        .route("/.fs/{*path}", put(fs::handle_fs_put))
+        .route("/.fs/{*path}", delete(fs::handle_fs_delete))
+        .route(
+            "/.fs/{*path}",
+            post(fs::handle_fs_reconcile).layer(DefaultBodyLimit::max(8 * 1024 * 1024)),
+        )
+        .route_layer(middleware::from_fn(refuse_hidden_fs_paths));
+
     // Protected: require authorization (when an authorizer is configured).
     let protected = Router::new()
         .route("/.config", get(control::handle_config))
@@ -117,16 +150,7 @@ pub fn build_router(state: Arc<ServerState>) -> Router {
             "/.fs/",
             get(fs::handle_fs_list).layer(CompressionLayer::new()),
         )
-        .route(
-            "/.fs/{*path}",
-            get(fs::handle_fs_get).layer(CompressionLayer::new()),
-        )
-        .route("/.fs/{*path}", put(fs::handle_fs_put))
-        .route("/.fs/{*path}", delete(fs::handle_fs_delete))
-        .route(
-            "/.fs/{*path}",
-            post(fs::handle_fs_reconcile).layer(DefaultBodyLimit::max(8 * 1024 * 1024)),
-        )
+        .merge(fs_files)
         .route("/.events", get(crate::handlers::events::handle_events))
         .route(
             "/.revisions/",
@@ -229,7 +253,7 @@ mod auth_tests {
     use crate::state::ServerState;
     use crate::test_support::test_state;
     use axum::body::Body;
-    use axum::http::{Request, StatusCode};
+    use axum::http::{Method, Request, StatusCode};
     use std::sync::Arc;
     use tower::ServiceExt;
 
@@ -572,6 +596,150 @@ mod auth_tests {
             assert_eq!(status, StatusCode::UNAUTHORIZED, "{method} {uri} must 401");
         }
     }
+
+    /// A space folder is routinely a git work tree, and `.git/config` carries
+    /// whatever credentials are embedded in a remote URL. Every method must
+    /// refuse, and a refused write must not touch the disk. Real files on a
+    /// real disk, so the last assertions can prove nothing was mutated.
+    #[tokio::test]
+    async fn fs_hidden_paths_are_inaccessible_and_cannot_be_mutated() {
+        use silverbullet_server_common::space::DiskSpacePrimitives;
+
+        let dir = tempfile::tempdir().unwrap();
+        let mut state = test_state();
+        state.space = Box::new(DiskSpacePrimitives::new(dir.path(), "").unwrap());
+        for path in [
+            ".git/config",
+            ".gitattributes",
+            "folder/.hidden/note.md",
+            "folder/.hidden.md",
+        ] {
+            state.space.write_file(path, b"private", None).unwrap();
+        }
+        let router = crate::build_router(Arc::new(state));
+        for path in [
+            ".git/config",
+            ".gitattributes",
+            "folder/.hidden/note.md",
+            "folder/.hidden.md",
+            // Percent-encoded separators and dots must not smuggle a
+            // component past the guard.
+            "%2egit/config",
+            ".git%2fconfig",
+            "folder%2f%2ehidden%2fnote.md",
+            "folder%5c.hidden%5cnote.md",
+            // Paths that do not exist yet: a write must not create them.
+            ".new.md",
+            "folder/.new/note.md",
+            "./.git/config",
+            "folder/../.git/config",
+        ] {
+            for method in [
+                Method::GET,
+                Method::HEAD,
+                Method::PUT,
+                Method::DELETE,
+                Method::POST,
+            ] {
+                let response = router
+                    .clone()
+                    .oneshot(
+                        Request::builder()
+                            .method(method.clone())
+                            .uri(format!("/.fs/{path}"))
+                            .body(Body::from("replacement"))
+                            .unwrap(),
+                    )
+                    .await
+                    .unwrap();
+                assert_eq!(response.status(), StatusCode::NOT_FOUND, "{method} {path}");
+            }
+            // Header-driven variants route the same way and must not leak.
+            for header in ["X-Get-Meta", "Range"] {
+                let response = router
+                    .clone()
+                    .oneshot(
+                        Request::builder()
+                            .uri(format!("/.fs/{path}"))
+                            .header(
+                                header,
+                                if header == "Range" { "bytes=0-2" } else { "cheap" },
+                            )
+                            .body(Body::empty())
+                            .unwrap(),
+                    )
+                    .await
+                    .unwrap();
+                assert_eq!(response.status(), StatusCode::NOT_FOUND, "{header} {path}");
+            }
+        }
+        for path in [
+            ".git/config",
+            ".gitattributes",
+            "folder/.hidden/note.md",
+            "folder/.hidden.md",
+        ] {
+            assert_eq!(std::fs::read(dir.path().join(path)).unwrap(), b"private");
+        }
+        assert!(!dir.path().join(".new.md").exists());
+        assert!(!dir.path().join("folder/.new").exists());
+    }
+
+    /// The guard keys on a component *starting* with a dot, so an interior dot
+    /// is fine. `%252ehidden.md` decodes exactly once, to the literal name
+    /// `%2ehidden.md`, which starts with `%` — decoding it twice would wrongly
+    /// read it as `.hidden.md` and refuse a file the user can legitimately see.
+    #[tokio::test]
+    async fn fs_visible_paths_allow_dots_and_decode_only_once() {
+        let state = test_state();
+        for path in ["folder/note.md", "version.2/note.md", "%2ehidden.md"] {
+            state.space.write_file(path, b"visible", None).unwrap();
+        }
+        let router = crate::build_router(Arc::new(state));
+        for path in ["folder/note.md", "version.2/note.md", "%252ehidden.md"] {
+            let response = router
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .uri(format!("/.fs/{path}"))
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::OK, "{path}");
+            let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+                .await
+                .unwrap();
+            assert_eq!(&body[..], b"visible");
+        }
+    }
+
+    /// The guard is scoped to `/.fs/` only. The client bundle is served from
+    /// dot-prefixed paths of its own and must keep working.
+    #[tokio::test]
+    async fn hidden_fs_guard_does_not_block_client_bundle_assets() {
+        let state = test_state();
+        state
+            .client_bundle
+            .write_file(".client/sample.js", b"bundle", None)
+            .unwrap();
+        let response = crate::build_router(Arc::new(state))
+            .oneshot(
+                Request::builder()
+                    .uri("/.client/sample.js")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        assert_eq!(&body[..], b"bundle");
+    }
+
 }
 
 #[cfg(test)]
