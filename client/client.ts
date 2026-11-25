@@ -1359,7 +1359,7 @@ export class Client {
         } else if (!this.versionMismatchNotified) {
           this.versionMismatchNotified = true;
           this.ui.flashNotification(
-            "A new version of SilverBullet client is available. A reload or two is required to update.",
+            "A new version of the Denospace client is available. A reload or two is required to update.",
             "warning",
             {
               timeout: 0,

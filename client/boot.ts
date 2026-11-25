@@ -67,7 +67,7 @@ async function findEncryptionKey(
 
 if (!crypto.subtle) {
   alert(
-    "You are likely accessing SilverBullet via HTTP (rather than HTTPS or localhost), this is not a supported configuration. See https://silverbullet.md/TLS",
+    "You are likely accessing Denospace via HTTP (rather than HTTPS or localhost), this is not a supported configuration. See https://silverbullet.md/TLS",
   );
 }
 
@@ -153,7 +153,7 @@ safeRun(async () => {
   ) {
     // Init encryption
     console.log("Initializing encryption");
-    console.log("Querying SilverBullet service workers for an encryption key");
+    console.log("Querying Denospace service workers for an encryption key");
     encryptionKey = await findEncryptionKey(!!bootConfig.accountManaged);
     if (!encryptionKey) {
       console.warn(
@@ -182,7 +182,7 @@ safeRun(async () => {
     history.pushState({}, "", newURL.toString());
   }
   performance.mark("sb:config-loaded");
-  console.log("Booting SilverBullet client");
+  console.log("Booting Denospace client");
   console.log("Boot config", bootConfig, config.values);
 
   // Skip (and tear down) the service worker when headless or when the server
@@ -331,7 +331,7 @@ async function augmentBootConfig(bootConfig: BootConfig, config: Config) {
 
 if (!globalThis.indexedDB) {
   alert(
-    "SilverBullet requires IndexedDB to operate and it is not available in your browser. Please use a recent version of Chrome, Firefox (not in private mode) or Safari.",
+    "Denospace requires IndexedDB to operate and it is not available in your browser. Please use a recent version of Chrome, Firefox (not in private mode) or Safari.",
   );
 }
 

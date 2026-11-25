@@ -1,4 +1,6 @@
-# SilverBullet, with Org mode and Denote
+# Denospace
+
+Org mode and Denote, in the browser.
 
 A fork of [SilverBullet](https://github.com/silverbulletmd/silverbullet) that
 makes **`.org` a first-class page type** and teaches it
@@ -967,10 +969,31 @@ git fetch upstream && git rebase upstream/main
 ## Development
 
 Same as upstream: `npm ci`, then `npm run build` and `cargo build --release -p
-silverbullet`. Tests are `npx vitest run` (2,360) and `npx playwright test
+silverbullet`. Tests are `npx vitest run` (2,498) and `npx playwright test
 --project=chromium` — `e2e/denote.test.ts` holds 32 Denote/Org end-to-end
 tests, whose fixtures are three real notes from the public
 [l-o-l-h/law](https://github.com/l-o-l-h/law) library.
 
 The parser was validated against all 457 notes in that library: 456 parsed, 0
 missing identifiers, 0 signature mismatches.
+
+## Licence and credits
+
+Denospace is MIT licensed, as upstream is. See [LICENSE.md](LICENSE.md).
+
+* **SilverBullet**, everything this is built on, is
+  © Zef Hemel and MIT licensed. Upstream's own README is kept as
+  [README-upstream.md](README-upstream.md).
+* **Denote** is Protesilaos Stavrou's, and `denote.el` is GPL-3.0-or-later
+  with copyright held by the Free Software Foundation. None of it is used
+  here. Denote's file-naming scheme is a *file format*, and this fork
+  implements it independently so that Emacs and Denospace can edit one
+  library; [PROVENANCE.md](PROVENANCE.md) records how that implementation was
+  produced and the rule for changing it.
+* **ET Book** is © Dmitry Krasny, Bonnie Scranton and Edward Tufte, MIT
+  licensed — see [client/fonts/ET-BOOK-LICENSE.md](client/fonts/ET-BOOK-LICENSE.md).
+* **iA Writer Mono S** is © Information Architects, under the SIL Open Font
+  Licence 1.1 — see [client/fonts/LICENSE.md](client/fonts/LICENSE.md).
+
+The name and the logo are Denospace's own, and are not covered by the
+upstream licence.
