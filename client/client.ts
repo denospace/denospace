@@ -94,6 +94,7 @@ import type {
   ServiceWorkerTargetMessage,
 } from "./types/ui.ts";
 import { syncMessageNotification } from "./types/ui.ts";
+import { extractParentContexts } from "./parent_contexts.ts";
 import { WidgetCache } from "./widget_cache.ts";
 
 // Fetch the file list ever so often, this will implicitly kick off a snapshot comparison resulting in the indexing of changed pages
@@ -1054,23 +1055,7 @@ export class Client {
   }
 
   public extractParentNodes(editorState: EditorState, currentNode: SyntaxNode) {
-    const parentNodes: string[] = [];
-    if (currentNode) {
-      let node: SyntaxNode | null = currentNode;
-      do {
-        if (["FencedCode", "FrontMatter"].includes(node.name)) {
-          const body = editorState.sliceDoc(node.from + 3, node.to - 3);
-          parentNodes.push(`${node.name}:${body}`);
-        } else if (node.name === "LuaDirective") {
-          const body = editorState.sliceDoc(node.from + 2, node.to - 1);
-          parentNodes.push(`${node.name}:${body}`);
-        } else {
-          parentNodes.push(node.name);
-        }
-        node = node.parent;
-      } while (node);
-    }
-    return parentNodes;
+    return extractParentContexts(editorState, currentNode);
   }
 
   editorComplete(context: CompletionContext): Promise<CompletionResult | null> {
