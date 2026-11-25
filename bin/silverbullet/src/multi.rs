@@ -207,6 +207,18 @@ pub(crate) async fn run_multi(
 /// One `ChromePool` — one Chrome process — serves every space; each space gets
 /// its own page, log buffer, and auth cookie. The pool is created eagerly but
 /// launches nothing until some space's runtime API is first used.
+/// Built without the `runtime-chrome` feature: there is no headless runtime,
+/// reported the same way as a host with no Chrome installed.
+#[cfg(not(feature = "runtime-chrome"))]
+pub(crate) fn space_runtime_factory(
+    _server_root: &std::path::Path,
+) -> (RuntimeFactory, RuntimeAvailability) {
+    tracing::info!("runtime API disabled: built without the runtime-chrome feature");
+    let factory: RuntimeFactory = Box::new(|_: &RuntimeRequest| None);
+    (factory, RuntimeAvailability::NoChrome)
+}
+
+#[cfg(feature = "runtime-chrome")]
 pub(crate) fn space_runtime_factory(
     server_root: &std::path::Path,
 ) -> (RuntimeFactory, RuntimeAvailability) {
