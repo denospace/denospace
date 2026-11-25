@@ -3,6 +3,7 @@ import {
   traverseTree,
 } from "@silverbulletmd/silverbullet/lib/tree";
 import { parseMarkdown } from "./markdown_parser/parser.ts";
+import { parseOrg } from "./org_parser/parser.ts";
 import { System } from "./plugos/system.ts";
 import { configSyscalls } from "./plugos/syscalls/config.ts";
 import { Config } from "./config.ts";
@@ -18,10 +19,21 @@ import { jsonschemaSyscalls } from "./plugos/syscalls/jsonschema.ts";
 import { systemSyscalls } from "./plugos/syscalls/system.ts";
 
 /**
- * Parses a page (CONFIG in practice) and extracts all space-lua code
+ * Parses a page (CONFIG in practice) and extracts all space-lua code.
+ *
+ * `path` picks the parser. An Org page states a block as `#+BEGIN_SRC
+ * space-lua`, which the Markdown parser reads as an ordinary paragraph -- so
+ * parsing `CONFIG.org` as Markdown finds no code at all and the space boots
+ * with none of its own configuration, silently. Omitting `path` keeps the
+ * Markdown behaviour for callers that only ever had Markdown.
  */
-export function extractSpaceLuaFromPageText(text: string): string {
-  const tree = parseMarkdown(text);
+export function extractSpaceLuaFromPageText(
+  text: string,
+  path?: string,
+): string {
+  const tree = path?.toLowerCase().endsWith(".org")
+    ? parseOrg(text)
+    : parseMarkdown(text);
   const codes: string[] = [];
   traverseTree(tree, (node) => {
     // Commenting a script out is how it gets disabled, which has to hold for

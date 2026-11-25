@@ -69,3 +69,56 @@ test("Test CONFIG lua eval", async () => {
     },
   });
 });
+
+// An Org page states a space-lua block as `#+BEGIN_SRC space-lua`, which the
+// Markdown parser reads as an ordinary paragraph. Parsing `CONFIG.org` as
+// Markdown therefore finds no code at all and the space boots with none of
+// its own configuration -- with nothing to show that it happened.
+
+test("an Org page's space-lua is extracted", () => {
+  expect(
+    extractSpaceLuaFromPageText(
+      "Intro\n\n#+BEGIN_SRC space-lua\nconfig.set('a', 1)\n#+END_SRC\n",
+      ".fs/CONFIG.org",
+    ),
+  ).toEqual("config.set('a', 1)");
+});
+
+test("an Org page parsed as Markdown yields nothing", () => {
+  // Stated so the reason the `path` argument exists cannot be refactored
+  // away by accident.
+  expect(
+    extractSpaceLuaFromPageText(
+      "#+BEGIN_SRC space-lua\nconfig.set('a', 1)\n#+END_SRC\n",
+    ),
+  ).toEqual("");
+});
+
+test("several blocks are joined, in order", () => {
+  expect(
+    extractSpaceLuaFromPageText(
+      "#+BEGIN_SRC space-lua\nfirst()\n#+END_SRC\n\n#+BEGIN_SRC space-lua\nsecond()\n#+END_SRC\n",
+      "CONFIG.org",
+    ),
+  ).toEqual("first()\nsecond()");
+});
+
+test("a commented-out block stays disabled in an Org page too", () => {
+  // Commenting a script out is how it gets turned off; an Org comment block
+  // has to count for that as much as a Markdown one.
+  expect(
+    extractSpaceLuaFromPageText(
+      "#+BEGIN_COMMENT\n#+BEGIN_SRC space-lua\nnope()\n#+END_SRC\n#+END_COMMENT\n",
+      "CONFIG.org",
+    ),
+  ).toEqual("");
+});
+
+test("the extension is matched regardless of case", () => {
+  expect(
+    extractSpaceLuaFromPageText(
+      "#+BEGIN_SRC space-lua\nyes()\n#+END_SRC\n",
+      "CONFIG.ORG",
+    ),
+  ).toEqual("yes()");
+});

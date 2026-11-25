@@ -71,6 +71,36 @@ if (!crypto.subtle) {
   );
 }
 
+/**
+ * Pages whose Space Lua runs before anything else, in the order it runs.
+ *
+ * The user's own config comes last so it can override the library's defaults.
+ * Both spellings of it are asked for: an Org space keeps its config in
+ * `CONFIG.org` and a Markdown one in `CONFIG.md`, and which exists is not
+ * known until one answers. A missing file is a 404, which `cachedFetch`
+ * returns as "" rather than throwing, so asking for both costs one request
+ * that finds nothing.
+ */
+const bootstrapPaths = [
+  // Some minimal bootstrap Lua: schema definition
+  ".fs/Library/Std/APIs/Schema.md",
+  // Configuration option definitions and defaults
+  ".fs/Library/Std/Config.md",
+  // Tag definition API
+  ".fs/Library/Std/APIs/Tag.md",
+  // Custom configuration
+  ".fs/CONFIG.org",
+  ".fs/CONFIG.md",
+];
+
+/** How many of {@link bootstrapPaths} are the user's own config page. */
+const userConfigPathCount = 2;
+
+/** A bootstrap page's Space Lua, parsed as whatever markup the page is in. */
+function spaceLuaOf({ path, text }: { path: string; text: string }): string {
+  return extractSpaceLuaFromPageText(text, path);
+}
+
 safeRun(async () => {
   performance.mark("sb:boot-start");
   // First we attempt to fetch the config from the server
@@ -78,21 +108,19 @@ safeRun(async () => {
   let config: Config | undefined;
   // Placeholder proxy for Client object to be swapped in later
   const clientProxy = new BoxProxy({});
-  let bootstrapLuaScriptPages: string[] = [];
+  let bootstrapLuaScriptPages: { path: string; text: string }[] = [];
   // Try loading config and scripts
   try {
     let configJSONText: string;
-    [configJSONText, ...bootstrapLuaScriptPages] = await Promise.all([
+    let bootstrapTexts: string[];
+    [configJSONText, ...bootstrapTexts] = await Promise.all([
       cachedFetch(".config"),
-      // Some minimal bootstrap Lua: schema definition
-      cachedFetch(".fs/Library/Std/APIs/Schema.md"),
-      // Configuration option definitions and defaults
-      cachedFetch(".fs/Library/Std/Config.md"),
-      // Tag definition API
-      cachedFetch(".fs/Library/Std/APIs/Tag.md"),
-      // Custom configuration
-      cachedFetch(".fs/CONFIG.md"),
+      ...bootstrapPaths.map(cachedFetch),
     ]);
+    bootstrapLuaScriptPages = bootstrapPaths.map((path, i) => ({
+      path,
+      text: bootstrapTexts[i],
+    }));
     bootConfig = JSON.parse(configJSONText);
   } catch (e: any) {
     if (e.message === offlineError.message) {
@@ -117,7 +145,7 @@ safeRun(async () => {
   // Concatenate and evaluate
   try {
     config = await loadConfig(
-      bootstrapLuaScriptPages.map(extractSpaceLuaFromPageText).join("\n"),
+      bootstrapLuaScriptPages.map(spaceLuaOf).join("\n"),
       clientProxy.buildProxy(),
       !!bootConfig?.readOnly,
     );
@@ -128,10 +156,10 @@ safeRun(async () => {
     console.error("Error evaluating Space Lua script on boot:", e);
     try {
       config = await loadConfig(
-        // Everything but CONFIG (at the end)
+        // Everything but the user's config, which is what just failed
         bootstrapLuaScriptPages
-          .slice(0, bootstrapLuaScriptPages.length - 1)
-          .map(extractSpaceLuaFromPageText)
+          .slice(0, bootstrapLuaScriptPages.length - userConfigPathCount)
+          .map(spaceLuaOf)
           .join("\n"),
         clientProxy.buildProxy(),
         false,

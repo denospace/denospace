@@ -9,28 +9,68 @@ import {
 } from "@silverbulletmd/silverbullet/syscalls";
 import { buildConfigurationHtml } from "./configuration_html.ts";
 import { type CommandOverride, parseManagedBlock, toLua } from "./lua.ts";
+import { pathFromPageName } from "@silverbulletmd/silverbullet/lib/ref";
 import {
   findManagedBlock,
   MANAGED_MARKER,
+  type PageSyntax,
   replaceManagedBlock,
+  syntaxForPath,
 } from "./config_block.ts";
 import { listLibraries } from "./libraries.ts";
 import type { LibrariesFocus, TabId } from "./ui/types.ts";
 
 const CONFIG_PAGE = "CONFIG";
+/**
+ * An Org page carries its extension in its name, so the Org config page is
+ * `CONFIG.org` where the Markdown one is the bare name `CONFIG`.
+ */
+const ORG_CONFIG_PAGE = "CONFIG.org";
 const PLUG_NAME = "configuration-manager";
 
-async function readDefaultConfigTemplate(): Promise<string> {
-  const template = await asset.readAsset(PLUG_NAME, "assets/CONFIG.md");
-  return template.replaceAll("{{MANAGED_MARKER}}", MANAGED_MARKER);
+type ConfigPage = {
+  /** The page name to read and write. */
+  name: string;
+  /** Its current text, empty when the page does not exist yet. */
+  text: string;
+  /** The markup it is written in, which decides how a block is spelled. */
+  syntax: PageSyntax;
+};
+
+async function readPageOrNull(name: string): Promise<string | null> {
+  try {
+    return await space.readPage(name);
+  } catch {
+    return null;
+  }
 }
 
-async function readConfigPage(): Promise<string> {
-  try {
-    return await space.readPage(CONFIG_PAGE);
-  } catch {
-    return "";
+/**
+ * The config page this space uses.
+ *
+ * A space that already has one keeps it, whichever markup it is in, so an
+ * existing `CONFIG.md` is never orphaned or silently converted. A space with
+ * neither gets Org, because a new space here is an Org space -- the same
+ * reasoning that makes the seeded index page an Org file.
+ */
+async function resolveConfigPage(): Promise<ConfigPage> {
+  for (const name of [ORG_CONFIG_PAGE, CONFIG_PAGE]) {
+    const text = await readPageOrNull(name);
+    if (text !== null) {
+      return { name, text, syntax: syntaxForPath(pathFromPageName(name)) };
+    }
   }
+  return { name: ORG_CONFIG_PAGE, text: "", syntax: "org" };
+}
+
+async function readDefaultConfigTemplate(
+  syntax: PageSyntax,
+): Promise<string> {
+  const template = await asset.readAsset(
+    PLUG_NAME,
+    syntax === "org" ? "assets/CONFIG.org" : "assets/CONFIG.md",
+  );
+  return template.replaceAll("{{MANAGED_MARKER}}", MANAGED_MARKER);
 }
 
 export async function openConfiguration() {
@@ -64,19 +104,19 @@ export async function openLibrariesUpdateAllRepos() {
 }
 
 async function openPanel(initialTab: TabId, librariesFocus?: LibrariesFocus) {
-  const [schemas, values, categories, commands, configText, libraries] =
+  const [schemas, values, categories, commands, configPage, libraries] =
     await Promise.all([
       config.getSchemas(),
       config.getValues(),
       config.getCategories(),
       system.listCommands(),
-      readConfigPage(),
+      resolveConfigPage(),
       listLibraries(),
     ]);
 
   let configOverrides: Record<string, any> = {};
   let commandOverrides: Record<string, CommandOverride> = {};
-  const block = findManagedBlock(configText);
+  const block = findManagedBlock(configPage.text);
   if (block) {
     const parsed = parseManagedBlock(block.innerContent);
     configOverrides = parsed.configOverrides;
@@ -125,8 +165,9 @@ export async function saveConfiguration(
 
   const blockContent = lines.join("\n");
 
+  const configPage = await resolveConfigPage();
   const configText =
-    (await readConfigPage()) || (await readDefaultConfigTemplate());
+    configPage.text || (await readDefaultConfigTemplate(configPage.syntax));
 
   const hasContent =
     Object.keys(pendingConfig).length > 0 ||
@@ -135,12 +176,16 @@ export async function saveConfiguration(
   const newText = replaceManagedBlock(
     configText,
     hasContent ? blockContent : "",
+    configPage.syntax,
   );
 
-  await space.writePage(CONFIG_PAGE, newText);
+  await space.writePage(configPage.name, newText);
 
-  await sync.performFileSync(`${CONFIG_PAGE}.md`);
-  await mq.send("indexQueue", `${CONFIG_PAGE}.md`);
+  // The file behind the page, which is `CONFIG.md` for the bare name and
+  // `CONFIG.org` for the Org page -- not the page name with `.md` stuck on.
+  const configPath = pathFromPageName(configPage.name);
+  await sync.performFileSync(configPath);
+  await mq.send("indexQueue", configPath);
   await mq.awaitEmptyQueue("indexQueue");
   await editor.reloadConfigAndCommands();
   await editor.rebuildEditorState();

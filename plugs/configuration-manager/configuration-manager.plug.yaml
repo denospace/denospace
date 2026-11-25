@@ -8,6 +8,9 @@ build:
   - type: copy
     in: ./template/CONFIG.md
     out: ./assets/CONFIG.md
+  - type: copy
+    in: ./template/CONFIG.org
+    out: ./assets/CONFIG.org
 assets:
   - "assets/**"
 functions:
