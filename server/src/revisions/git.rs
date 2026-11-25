@@ -82,7 +82,20 @@ pub fn run_with_stdin(
     if !available() {
         return Err("git is not installed".to_string());
     }
-    let mut child = command(repo, args, envs)
+    let out = output_with_stdin(command(repo, args, envs), stdin)?;
+    if out.status.success() {
+        Ok(String::from_utf8_lossy(&out.stdout).into_owned())
+    } else {
+        Err(String::from_utf8_lossy(&out.stderr).trim().to_string())
+    }
+}
+
+/// Run `cmd` with `stdin` piped in, and wait for it.
+fn output_with_stdin(
+    mut cmd: Command,
+    stdin: Vec<u8>,
+) -> Result<std::process::Output, String> {
+    let mut child = cmd
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
@@ -90,8 +103,8 @@ pub fn run_with_stdin(
         .map_err(|e| format!("failed to run git: {e}"))?;
     {
         use std::io::Write;
-        // Scoped so the handle closes the moment the bytes are in. Without the
-        // EOF git waits for more input while we wait for git.
+        // Scoped so the handle closes the moment the bytes are in. Without
+        // that EOF git waits for more input while we wait for git.
         let mut pipe = child
             .stdin
             .take()
@@ -99,13 +112,28 @@ pub fn run_with_stdin(
         pipe.write_all(&stdin)
             .map_err(|e| format!("failed to write git stdin: {e}"))?;
     }
-    let out = child
+    child
         .wait_with_output()
-        .map_err(|e| format!("failed to run git: {e}"))?;
-    if out.status.success() {
-        Ok(String::from_utf8_lossy(&out.stdout).into_owned())
-    } else {
-        Err(String::from_utf8_lossy(&out.stderr).trim().to_string())
+        .map_err(|e| format!("failed to run git: {e}"))
+}
+
+/// Like [`run_with_stdin`], but also reads exit code `also_ok` as success and
+/// returns raw bytes. `git check-ignore` exits 1 when nothing matched, which
+/// is an ordinary answer rather than a failure.
+pub fn run_bytes_with_stdin_tolerating(
+    repo: &Path,
+    args: &[&str],
+    stdin: Vec<u8>,
+    also_ok: i32,
+) -> Result<Vec<u8>, String> {
+    if !available() {
+        return Err("git is not installed".to_string());
+    }
+    let out = output_with_stdin(command(repo, args, &[]), stdin)?;
+    match out.status.code() {
+        Some(0) => Ok(out.stdout),
+        Some(code) if code == also_ok => Ok(out.stdout),
+        _ => Err(String::from_utf8_lossy(&out.stderr).trim().to_string()),
     }
 }
 
