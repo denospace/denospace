@@ -24,10 +24,7 @@ function contextsAt(
   ensureSyntaxTree(state, doc.length, 5000);
   const at = doc.indexOf(marker);
   expect(at, `${marker} is not in the document`).toBeGreaterThan(-1);
-  return extractParentContexts(
-    state,
-    syntaxTree(state).resolveInner(at, -1),
-  );
+  return extractParentContexts(state, syntaxTree(state).resolveInner(at, -1));
 }
 
 const markdownBlock = "```space-lua\nx = 1\n```\n";
@@ -88,7 +85,10 @@ const gateMatches = (contexts: string[], gate: string) =>
 
 test("a space-lua gate matches in both syntaxes", () => {
   expect(
-    gateMatches(contextsAt(markdownBlock, "x = 1", "markdown"), "FencedCode:space-lua"),
+    gateMatches(
+      contextsAt(markdownBlock, "x = 1", "markdown"),
+      "FencedCode:space-lua",
+    ),
   ).toBe(true);
   // This is the one that was broken: an Org page offered none of the library's
   // space-lua slash commands, and suppressed none of the ones that should be

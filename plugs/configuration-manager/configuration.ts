@@ -63,9 +63,7 @@ async function resolveConfigPage(): Promise<ConfigPage> {
   return { name: ORG_CONFIG_PAGE, text: "", syntax: "org" };
 }
 
-async function readDefaultConfigTemplate(
-  syntax: PageSyntax,
-): Promise<string> {
+async function readDefaultConfigTemplate(syntax: PageSyntax): Promise<string> {
   const template = await asset.readAsset(
     PLUG_NAME,
     syntax === "org" ? "assets/CONFIG.org" : "assets/CONFIG.md",

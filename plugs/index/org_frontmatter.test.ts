@@ -77,8 +77,10 @@ test("prose containing a colon survives verbatim", () => {
 });
 
 test("a flow list is read as a list", () => {
-  expect(fm('#+onlyContexts: ["FencedCode:space-lua", "LuaDirective"]\n')
-    .onlyContexts).toEqual(["FencedCode:space-lua", "LuaDirective"]);
+  expect(
+    fm('#+onlyContexts: ["FencedCode:space-lua", "LuaDirective"]\n')
+      .onlyContexts,
+  ).toEqual(["FencedCode:space-lua", "LuaDirective"]);
 });
 
 test("an empty keyword value is empty, not missing", () => {

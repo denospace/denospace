@@ -40,7 +40,10 @@ function parseKeywordValue(raw: string): any {
     // YAML reads `a: b` as a map and `- a` as a list; a keyword line is one
     // value, so anything that came back structured from prose is a misread.
     // Objects are the risk here -- a colon in a sentence is common.
-    if (parsed === null || typeof parsed === "object" && !Array.isArray(parsed)) {
+    if (
+      parsed === null ||
+      (typeof parsed === "object" && !Array.isArray(parsed))
+    ) {
       return raw;
     }
     return parsed;

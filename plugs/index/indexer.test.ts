@@ -7,11 +7,7 @@ import { parseMarkdown } from "../../client/markdown_parser/parser.ts";
 import { createMockSystem } from "../../plug-api/system_mock.ts";
 import { parseOrg } from "../../client/org_parser/parser.ts";
 import { extractFrontMatter } from "./frontmatter.ts";
-import {
-  indexMarkdown,
-  indexPage,
-  withDenoteFrontMatter,
-} from "./indexer.ts";
+import { indexMarkdown, indexPage, withDenoteFrontMatter } from "./indexer.ts";
 
 const defaultPageMeta: PageMeta = {
   ref: "",
