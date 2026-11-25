@@ -69,6 +69,46 @@ pub fn run_bytes(repo: &Path, args: &[&str], envs: &[(&str, &str)]) -> Result<Ve
     }
 }
 
+/// Like [`run`], but feeds `stdin` to git rather than passing a path list as
+/// arguments. A space with enough changed paths cannot state them any other
+/// way: Windows caps a command line at 32K characters, and the shells on the
+/// other platforms have limits of their own. Pair with `--pathspec-from-file=-`.
+pub fn run_with_stdin(
+    repo: &Path,
+    args: &[&str],
+    envs: &[(&str, &str)],
+    stdin: Vec<u8>,
+) -> Result<String, String> {
+    if !available() {
+        return Err("git is not installed".to_string());
+    }
+    let mut child = command(repo, args, envs)
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("failed to run git: {e}"))?;
+    {
+        use std::io::Write;
+        // Scoped so the handle closes the moment the bytes are in. Without the
+        // EOF git waits for more input while we wait for git.
+        let mut pipe = child
+            .stdin
+            .take()
+            .ok_or_else(|| "git stdin was not piped".to_string())?;
+        pipe.write_all(&stdin)
+            .map_err(|e| format!("failed to write git stdin: {e}"))?;
+    }
+    let out = child
+        .wait_with_output()
+        .map_err(|e| format!("failed to run git: {e}"))?;
+    if out.status.success() {
+        Ok(String::from_utf8_lossy(&out.stdout).into_owned())
+    } else {
+        Err(String::from_utf8_lossy(&out.stderr).trim().to_string())
+    }
+}
+
 /// Exit-code query: Ok(true) on status 0, Ok(false) on the given "false" code.
 /// `git diff` signals "differences found" with exit code 1, the way `diff(1)`
 /// does, so [`run`] would read a perfectly good diff as a failure.
