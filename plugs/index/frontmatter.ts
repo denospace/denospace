@@ -10,6 +10,7 @@ import { cleanupJSON } from "@silverbulletmd/silverbullet/lib/json";
 import YAML from "js-yaml";
 import { extractHashtag } from "@silverbulletmd/silverbullet/lib/tags";
 import type { CompleteEvent } from "@silverbulletmd/silverbullet/type/client";
+import { collectOrgFrontMatter } from "./org_frontmatter.ts";
 import { determineTags } from "./cheap_yaml.ts";
 import { stripPositionAttributes } from "./position_attributes.ts";
 import { attributeCompletion } from "./complete.ts";
@@ -161,6 +162,18 @@ export function extractFrontMatter(
 
     return;
   });
+
+  // An Org page states its front matter as `#+key:` lines rather than a YAML
+  // block, so without this a converted meta page would index with no tags and
+  // no description -- and the template machinery, which finds slash templates
+  // by their `meta/template/slash` tag, would quietly come up empty.
+  const org = collectOrgFrontMatter(tree);
+  for (const [name, value] of Object.entries(org.attributes)) {
+    if (!(name in frontmatter)) {
+      frontmatter[name] = value;
+    }
+  }
+  tags.push(...org.tags);
 
   try {
     frontmatter.tags = [

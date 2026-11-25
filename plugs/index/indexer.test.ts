@@ -5,7 +5,13 @@ import type {
 import { describe, expect, test } from "vitest";
 import { parseMarkdown } from "../../client/markdown_parser/parser.ts";
 import { createMockSystem } from "../../plug-api/system_mock.ts";
-import { indexMarkdown, indexPage } from "./indexer.ts";
+import { parseOrg } from "../../client/org_parser/parser.ts";
+import { extractFrontMatter } from "./frontmatter.ts";
+import {
+  indexMarkdown,
+  indexPage,
+  withDenoteFrontMatter,
+} from "./indexer.ts";
 
 const defaultPageMeta: PageMeta = {
   ref: "",
@@ -299,5 +305,62 @@ describe("conflict documents", () => {
     expect(paragraph).toBeDefined();
     expect(paragraph.tags).toEqual(["inline"]);
     expect(paragraph.itags).toEqual(["paragraph", "inline"]);
+  });
+});
+
+// Once an Org page's `#+key:` lines are read as front matter, a Denote `.org`
+// note suddenly has front matter for the first time -- every one of them
+// carries `#+title:`, `#+date:`, `#+filetags:` and `#+identifier:`. These
+// pin down which side wins, because the answer decides whether a real space
+// of Denote notes indexes the same way it did before.
+describe("withDenoteFrontMatter", () => {
+  const denoteName = "20231104T093000--court-costs__law_costs.org";
+  const denoteText = `#+title:      Court Costs
+#+date:       [2023-11-04 Sat 09:30]
+#+filetags:   :law:costs:
+#+identifier: 20231104T093000
+
+Body.
+`;
+
+  const merge = (name: string, text: string) =>
+    withDenoteFrontMatter(name, text, extractFrontMatter(parseOrg(text)));
+
+  test("a note whose name and front matter agree indexes as it always did", () => {
+    const fm = merge(denoteName, denoteText);
+    expect(fm.title).toEqual("Court Costs");
+    expect(fm.identifier).toEqual("20231104T093000");
+    expect(fm.tags).toEqual(["law", "costs"]);
+    expect(fm.displayName).toEqual("Court Costs");
+  });
+
+  test("the file name's identifier wins over a stale one in the text", () => {
+    // A Denote link resolves through the identifier, and the file name is
+    // what Denote considers canonical. A rename that left the front matter
+    // behind must not redirect every inbound link.
+    const stale = denoteText.replace(
+      "#+identifier: 20231104T093000",
+      "#+identifier: 19990101T000000",
+    );
+    expect(merge(denoteName, stale).identifier).toEqual("20231104T093000");
+  });
+
+  test("other keywords still reach the page", () => {
+    const withExtra = denoteText.replace(
+      "#+identifier: 20231104T093000",
+      "#+identifier: 20231104T093000\n#+DESCRIPTION: A case note",
+    );
+    expect(merge(denoteName, withExtra).description).toEqual("A case note");
+  });
+
+  test("a page that is not a Denote note keeps its own front matter", () => {
+    const fm = merge(
+      "Library/Std/Slash Templates/code.org",
+      "#+DESCRIPTION: Insert a code block\n#+FILETAGS: :meta/template/slash:\n",
+    );
+    expect(fm.description).toEqual("Insert a code block");
+    expect(fm.tags).toEqual(["meta/template/slash"]);
+    // Nothing Denote-shaped should be invented for it.
+    expect(fm.identifier).toBeUndefined();
   });
 });

@@ -226,7 +226,7 @@ export async function indexMarkdown(
  * every downstream indexer — page, tags, items — treat a Denote note like any
  * other page without knowing Denote exists.
  */
-function withDenoteFrontMatter(
+export function withDenoteFrontMatter(
   name: string,
   text: string,
   frontmatter: FrontMatter,
@@ -236,9 +236,17 @@ function withDenoteFrontMatter(
     return frontmatter;
   }
   return {
-    ...denote,
     ...frontmatter,
-    // Explicit front matter in the file wins, but a Denote note rarely has any.
+    // Denote's own fields win. `denoteMetadata` has already read this note's
+    // front matter and applied Denote's rules to it -- an in-file `#+title:`
+    // beats the file name's, the file name's keywords beat `#+filetags:` --
+    // so its answer is the considered one and the raw extraction must not
+    // overwrite it. That matters most for `identifier`: the file name's is
+    // what resolves a Denote link, and a stale `#+identifier:` left behind by
+    // a rename would otherwise take its place. This used to be moot, since an
+    // Org page's `#+key:` lines were not read as front matter at all and a
+    // Denote note therefore appeared to have none.
+    ...denote,
     tags: [...new Set([...(denote.tags ?? []), ...(frontmatter.tags ?? [])])],
   };
 }
