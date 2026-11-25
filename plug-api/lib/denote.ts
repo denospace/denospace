@@ -1,11 +1,8 @@
 /**
  * Denote's file-naming scheme and front matter.
  *
- * Ported from Protesilaos Stavrou's `denote.el`, which is the specification:
- * the slug rules, delimiters and front matter templates here mirror
- * `denote-sluggify-*`, `denote-format-file-name` and `denote-file-types`. A
- * Denote note carries its metadata in its *file name*, so parsing that name is
- * how a note's identity, title and keywords are recovered:
+ * A Denote note carries its metadata in its *file name*, so parsing that name
+ * is how a note's identity, title and keywords are recovered:
  *
  *     20240322T131856==sig--some-title__topic1_topic2.org
  *     └ identifier ─┘  └sig┘ └ title ┘  └── keywords ──┘
@@ -13,12 +10,19 @@
  * Each component is introduced by a doubled delimiter (`@@`, `==`, `--`, `__`)
  * and the components themselves never contain one, because sluggification
  * collapses runs of those characters to a single occurrence.
+ *
+ * The scheme and the front-matter layout are a file format: a note written by
+ * Emacs and a note written here have to be the same file on disk. The
+ * sluggification rules live in `./denote_slug.ts`, which is an independent
+ * implementation derived from recorded behaviour — see its header.
  */
+
+import { sluggify } from "./denote_slug.ts";
+export { sluggify } from "./denote_slug.ts";
+export type { DenoteComponent } from "./denote_slug.ts";
 
 /** `denote-date-identifier-format`, as a matcher: `%Y%m%dT%H%M%S`. */
 export const denoteDateIdentifierRegex = /^\d{8}T\d{6}/;
-
-export type DenoteComponent = "identifier" | "signature" | "title" | "keyword";
 
 export type DenoteName = {
   identifier?: string;
@@ -43,86 +47,6 @@ const delimiters = {
   "--": "title",
   __: "keywords",
 } as const;
-
-// The three punctuation sets are deliberately different, matching
-// `denote-sluggify-title`, `-keyword` and `-signature`. A signature keeps `=`
-// and `_` (they become its own separator); a keyword drops everything that
-// could be mistaken for a separator, since keywords are joined with `_`.
-const titlePunctuation = /[\][{}!@#$%^&*()+'"?,.\\|;:~`‘’“”/=]/g;
-const keywordPunctuation = /[\][{}!@#$%^&*()+'"?,.\\|;:~`‘’“”/_ =-]/g;
-const signaturePunctuation = /[\][{}!@#$%^&*()+'"?,.\\|;:~`‘’“”/-]/g;
-
-/** `denote-slug-hyphenate`. */
-export function slugHyphenate(str: string): string {
-  return str
-    .replace(/_|\s+/g, "-")
-    .replace(/-{2,}/g, "-")
-    .replace(/^-|-$/g, "");
-}
-
-/** `denote-slug-put-equals`. */
-export function slugPutEquals(str: string): string {
-  return str
-    .replace(/_|\s+/g, "=")
-    .replace(/={2,}/g, "=")
-    .replace(/^=|=$/g, "");
-}
-
-/** `denote-sluggify-title`. */
-export function sluggifyTitle(str: string): string {
-  return slugHyphenate(str.replace(titlePunctuation, "")).toLowerCase();
-}
-
-/** `denote-sluggify-keyword`: separate words are joined, not hyphenated. */
-export function sluggifyKeyword(str: string): string {
-  return str.replace(keywordPunctuation, "").toLowerCase();
-}
-
-/** `denote-sluggify-signature`: words are joined with `=`. */
-export function sluggifySignature(str: string): string {
-  return slugPutEquals(str.replace(signaturePunctuation, "")).toLowerCase();
-}
-
-function replaceConsecutiveTokens(str: string, component: DenoteComponent) {
-  const collapsed = str
-    .replace(/@{2,}/g, "@")
-    .replace(/={2,}/g, "=")
-    .replace(/_{2,}/g, "_");
-  // `--` survives in a title only because a title may legitimately contain one
-  // when the default sluggification is disabled.
-  return component === "title" ? collapsed : collapsed.replace(/-{2,}/g, "-");
-}
-
-function trimRightTokens(str: string, component: DenoteComponent) {
-  return component === "title"
-    ? str.replace(/[=@_]+$/, "")
-    : str.replace(/[=@_-]+$/, "");
-}
-
-/** `denote-sluggify-and-apply-rules`. */
-export function sluggify(component: DenoteComponent, str: string): string {
-  let slug: string;
-  switch (component) {
-    case "title":
-      slug = sluggifyTitle(str);
-      break;
-    case "keyword":
-      // Underscores separate keywords in a file name, so they can never occur
-      // inside one.
-      slug = sluggifyKeyword(str).replaceAll("_", "");
-      break;
-    case "signature":
-      slug = sluggifySignature(str);
-      break;
-    case "identifier":
-      slug = str;
-      break;
-  }
-  return trimRightTokens(
-    replaceConsecutiveTokens(slug.replaceAll(".", ""), component),
-    component,
-  );
-}
 
 function delimiterAt(str: string, at: number): keyof typeof delimiters | null {
   for (const delimiter of Object.keys(
