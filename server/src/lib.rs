@@ -33,6 +33,7 @@ pub use watcher::{start_watcher, FsAction, FsEvent, WatchMode};
 #[cfg(test)]
 mod test_support {
     use crate::state::ServerState;
+    use crate::DEFAULT_INDEX_PAGE;
     use silverbullet_server_common::space::MemorySpacePrimitives;
     use silverbullet_server_common::{BootConfig, RevisionsMode};
 

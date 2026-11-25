@@ -172,7 +172,7 @@ pub async fn handle_client_bundle(
 async fn server_side_content(state: &Arc<ServerState>, path: &str) -> (String, String) {
     let public = state.boot_config.read_only && state.authorizer.is_none();
     if !public {
-        return ("SilverBullet".to_string(), String::new());
+        return ("Denospace".to_string(), String::new());
     }
 
     let page_name = if path.is_empty() {

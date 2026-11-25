@@ -92,7 +92,7 @@ impl Config {
             read_only: env_nonempty("SB_READ_ONLY").is_some(),
             index_page: env_nonempty("SB_INDEX_PAGE")
                 .unwrap_or_else(|| silverbullet_server::DEFAULT_INDEX_PAGE.to_string()),
-            space_name: env_nonempty("SB_NAME").unwrap_or_else(|| "SilverBullet".to_string()),
+            space_name: env_nonempty("SB_NAME").unwrap_or_else(|| "Denospace".to_string()),
             disable_service_worker: env_nonempty("SB_DISABLE_SERVICE_WORKER").is_some(),
             shell_disabled: silverbullet_server::shell::disabled_by_env(),
             log_push: env_nonempty("SB_LOG_PUSH").is_some(),
@@ -136,7 +136,7 @@ mod tests {
         assert_eq!(c.port, 8080);
         assert_eq!(c.bind_host, "127.0.0.1");
         assert_eq!(c.index_page, "index");
-        assert_eq!(c.space_name, "SilverBullet");
+        assert_eq!(c.space_name, "Denospace");
     }
 
     #[test]

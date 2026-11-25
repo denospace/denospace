@@ -12,9 +12,9 @@ const MAX_INTERVAL: Duration = Duration::from_secs(300);
 /// though nothing was ever marked dirty.
 const SWEEP_INTERVAL: Duration = Duration::from_secs(3600);
 const SWEEP_MESSAGE: &str = "Periodic sweep";
-const DEFAULT_DOMAIN: &str = "silverbullet.local";
+const DEFAULT_DOMAIN: &str = "denospace.local";
 const EXTERNAL_AUTHOR: &str = "External";
-const SYSTEM_AUTHOR: &str = "SilverBullet";
+const SYSTEM_AUTHOR: &str = "Denospace";
 
 /// Who a pending change gets committed as. The commit grouping key: two
 /// attributions in one debounce window produce two commits.
@@ -592,7 +592,7 @@ mod tests {
         handle.commit_now();
         assert_eq!(
             git_out(dir.path(), &["log", "-1", "--format=%an"]),
-            "SilverBullet"
+            "Denospace"
         );
         let files = git_out(dir.path(), &["ls-tree", "-r", "--name-only", "HEAD"]);
         assert!(files.contains("index.md"), "{files}");
@@ -613,7 +613,7 @@ mod tests {
         assert!(handle.store().head_exists());
         assert_eq!(
             git_out(dir.path(), &["log", "-1", "--format=%an"]),
-            "SilverBullet"
+            "Denospace"
         );
         let files = git_out(dir.path(), &["ls-tree", "-r", "--name-only", "HEAD"]);
         assert!(files.contains("f0.md"), "{files}");
@@ -629,7 +629,7 @@ mod tests {
         handle.commit_now();
         assert_eq!(
             git_out(dir.path(), &["log", "-1", "--format=%an"]),
-            "SilverBullet"
+            "Denospace"
         );
         let files = git_out(dir.path(), &["ls-tree", "-r", "--name-only", "HEAD"]);
         assert!(files.contains("keep.md"), "{files}");
@@ -658,7 +658,7 @@ mod tests {
             .map(|l| l.to_string())
             .collect();
         authors.sort();
-        assert_eq!(authors, vec!["External", "SilverBullet", "alice"]);
+        assert_eq!(authors, vec!["External", "Denospace", "alice"]);
     }
 
     /// Commits `a.md` marked as an account named `author` and returns the
@@ -707,19 +707,19 @@ mod tests {
                     name: "Ada Lovelace".into(),
                     email: None,
                 },
-                ("Ada Lovelace", "ada-lovelace@silverbullet.local"),
+                ("Ada Lovelace", "ada-lovelace@denospace.local"),
             ),
             (
                 Attribution::LocalUser,
-                ("SilverBullet", "silverbullet@silverbullet.local"),
+                ("Denospace", "denospace@denospace.local"),
             ),
             (
                 Attribution::External,
-                ("External", "external@silverbullet.local"),
+                ("External", "external@denospace.local"),
             ),
             (
                 Attribution::System,
-                ("SilverBullet", "silverbullet@silverbullet.local"),
+                ("Denospace", "denospace@denospace.local"),
             ),
         ];
         for (attribution, (name, email)) in cases {
@@ -870,7 +870,7 @@ mod tests {
         tokio::time::sleep(Duration::from_millis(200)).await;
         handle.commit_now();
         let authors = git_out(dir.path(), &["log", "-1", "--format=%an"]);
-        assert_eq!(authors, "SilverBullet");
+        assert_eq!(authors, "Denospace");
     }
 
     #[test]

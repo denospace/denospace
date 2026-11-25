@@ -3,8 +3,8 @@ use silverbullet_server_common::RevisionsMode;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-const COMMITTER_NAME: &str = "SilverBullet";
-const COMMITTER_EMAIL: &str = "silverbullet@silverbullet.local";
+const COMMITTER_NAME: &str = "Denospace";
+const COMMITTER_EMAIL: &str = "denospace@denospace.local";
 
 pub struct StagedChange {
     pub status: char,
@@ -480,7 +480,7 @@ mod tests {
         let id = store
             .commit_batch(
                 "Alice",
-                "alice@silverbullet.local",
+                "alice@denospace.local",
                 "Update 2 files",
                 &["index.md".into(), "sub/note.md".into()],
             )
@@ -491,7 +491,7 @@ mod tests {
         let id2 = store
             .commit_batch(
                 "Bob",
-                "bob@silverbullet.local",
+                "bob@denospace.local",
                 "Delete sub/note.md",
                 &["sub/note.md".into()],
             )
@@ -500,7 +500,7 @@ mod tests {
 
         assert_eq!(
             git_out(dir.path(), &["log", "-1", "--format=%an <%ae>|%cn"]),
-            "Bob <bob@silverbullet.local>|SilverBullet"
+            "Bob <bob@denospace.local>|SilverBullet"
         );
         assert_eq!(git_out(dir.path(), &["log", "--format=%an"]), "Bob\nAlice");
         assert_eq!(

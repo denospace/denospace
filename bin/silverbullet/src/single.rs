@@ -244,7 +244,7 @@ mod tests {
             gitignore: String::new(),
             read_only: false,
             index_page: "index".into(),
-            space_name: "SilverBullet".into(),
+            space_name: "Denospace".into(),
             disable_service_worker: false,
             shell_disabled: false,
             log_push: false,

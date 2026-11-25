@@ -62,7 +62,7 @@ pub async fn handle_proxy(
         }
     }
     if !has_ua {
-        fwd_headers.push(("user-agent".into(), "SilverBullet".into()));
+        fwd_headers.push(("user-agent".into(), "Denospace".into()));
     }
 
     tracing::info!("Proxying to {target}");
