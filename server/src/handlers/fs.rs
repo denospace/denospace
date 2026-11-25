@@ -71,6 +71,29 @@ pub async fn handle_fs_list(State(state): State<Arc<ServerState>>) -> impl IntoR
     }
 }
 
+/// Whether an `If-None-Match` list names `etag`. `*` matches whatever we hold.
+/// A `W/` prefix is dropped before comparing: our ETags are strong, and a weak
+/// validator still identifies the same bytes, which is all revalidation needs.
+fn etag_list_matches(if_none_match: &str, etag: &str) -> bool {
+    if_none_match.split(',').any(|candidate| {
+        let candidate = candidate.trim();
+        candidate == "*" || candidate.trim_start_matches("W/") == etag
+    })
+}
+
+/// A 304 that still carries every validator the client needs to keep caching.
+fn not_modified_by_etag(hash: &str, last_modified: &str) -> Response {
+    let mut builder = Response::builder()
+        .status(StatusCode::NOT_MODIFIED)
+        .header(axum::http::header::ETAG, etag_for_hash(hash))
+        .header("Cache-Control", "no-cache")
+        .header(axum::http::header::VARY, "Accept");
+    if !last_modified.is_empty() {
+        builder = builder.header(axum::http::header::LAST_MODIFIED, last_modified);
+    }
+    builder.body(Body::empty()).unwrap()
+}
+
 pub async fn handle_fs_get(
     State(state): State<Arc<ServerState>>,
     Path(path): Path<String>,
@@ -115,10 +138,38 @@ pub async fn handle_fs_get(
     // echoes back verbatim in `If-Modified-Since`; a string match means the file
     // is unchanged and we can answer 304 without reading the (potentially large)
     // body off disk — we only need a metadata-only `get_file_meta` probe here.
+    // RFC 9110  13.1.3: when both validators arrive, If-None-Match wins and
+    // If-Modified-Since is ignored. That is not pedantry here -- Last-Modified
+    // has one-second resolution, so a write landing later in the same second
+    // still matches it and would wrongly earn a 304.
+    let if_none_match = headers
+        .get(axum::http::header::IF_NONE_MATCH)
+        .and_then(|v| v.to_str().ok())
+        .map(str::to_string);
+    if let Some(inm) = &if_none_match {
+        let state_inner = state.clone();
+        let path_inner = path.clone();
+        // Only an already-cached hash, so this stays a metadata probe. A miss
+        // falls through to the read below, which can still answer 304 once it
+        // has computed the hash.
+        if let Ok(Some((hash, last_modified))) = run_blocking(move || {
+            let meta = state_inner.space.get_file_meta(&path_inner)?;
+            let hash = state_inner.fs_guard.cached_hash(&path_inner, &meta);
+            Ok::<_, SpaceError>(hash.map(|h| (h, http_date(meta.last_modified))))
+        })
+        .await
+        {
+            if etag_list_matches(inm, &etag_for_hash(&hash)) {
+                return not_modified_by_etag(&hash, &last_modified);
+            }
+        }
+    }
+
     let if_modified_since = headers
         .get(axum::http::header::IF_MODIFIED_SINCE)
         .and_then(|v| v.to_str().ok())
-        .map(str::to_string);
+        .map(str::to_string)
+        .filter(|_| if_none_match.is_none());
     if let Some(ims) = if_modified_since {
         let state_inner = state.clone();
         let path_inner = path.clone();
@@ -159,6 +210,13 @@ pub async fn handle_fs_get(
     })
     .await
     {
+        Ok((_, meta, hash))
+            if if_none_match
+                .as_deref()
+                .is_some_and(|inm| etag_list_matches(inm, &etag_for_hash(&hash))) =>
+        {
+            not_modified_by_etag(&hash, &http_date(meta.last_modified))
+        }
         Ok((data, mut meta, hash)) => {
             let real_content_type = meta.content_type.clone();
             if force_octet_stream {
@@ -1962,4 +2020,126 @@ mod tests {
 
         assert_eq!(resp.status(), StatusCode::PAYLOAD_TOO_LARGE);
     }
+
+    /// GET once to learn the validators the server itself issued, so the
+    /// conditional tests below send exactly what a real client would echo.
+    async fn validators(state: &Arc<crate::state::ServerState>, path: &str) -> (String, String) {
+        let resp = crate::build_router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .uri(format!("/.fs/{path}"))
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        let etag = resp.headers().get("etag").unwrap().to_str().unwrap().into();
+        let last_modified = resp
+            .headers()
+            .get("last-modified")
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .into();
+        (etag, last_modified)
+    }
+
+    async fn conditional_get(
+        state: &Arc<crate::state::ServerState>,
+        path: &str,
+        headers: &[(&str, &str)],
+    ) -> axum::http::Response<Body> {
+        let mut req = Request::builder().uri(format!("/.fs/{path}"));
+        for (name, value) in headers {
+            req = req.header(*name, *value);
+        }
+        crate::build_router(state.clone())
+            .oneshot(req.body(Body::empty()).unwrap())
+            .await
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn if_none_match_on_the_current_etag_is_304() {
+        let state = test_state();
+        state.space.write_file("a.md", b"hello", None).unwrap();
+        let state = Arc::new(state);
+        let (etag, _) = validators(&state, "a.md").await;
+
+        let resp = conditional_get(&state, "a.md", &[("if-none-match", &etag)]).await;
+        assert_eq!(resp.status(), StatusCode::NOT_MODIFIED);
+        // A 304 still has to carry the validators, or the client cannot
+        // revalidate again next time.
+        assert_eq!(resp.headers().get("etag").unwrap(), etag.as_str());
+        assert!(resp.headers().get("last-modified").is_some());
+        let body = axum::body::to_bytes(resp.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        assert!(body.is_empty());
+    }
+
+    #[tokio::test]
+    async fn if_none_match_on_a_stale_etag_serves_the_body() {
+        let state = test_state();
+        state.space.write_file("a.md", b"hello", None).unwrap();
+        let state = Arc::new(state);
+
+        let resp = conditional_get(
+            &state,
+            "a.md",
+            &[("if-none-match", "\"sha256:0000000000000000\"")],
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(resp.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        assert_eq!(&body[..], b"hello");
+    }
+
+    /// The reason this fix exists. Last-Modified has one-second resolution, so
+    /// a write landing later in the same second still matches a client's
+    /// If-Modified-Since. When a strong ETag says the bytes differ, it must
+    /// win and the body must be served -- otherwise the client keeps a stale
+    /// copy for as long as it keeps revalidating.
+    #[tokio::test]
+    async fn if_none_match_wins_over_a_matching_if_modified_since() {
+        let state = test_state();
+        state.space.write_file("a.md", b"hello", None).unwrap();
+        let state = Arc::new(state);
+        let (_, last_modified) = validators(&state, "a.md").await;
+
+        let resp = conditional_get(
+            &state,
+            "a.md",
+            &[
+                ("if-none-match", "\"sha256:0000000000000000\""),
+                ("if-modified-since", &last_modified),
+            ],
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::OK, "If-None-Match must take precedence");
+        let body = axum::body::to_bytes(resp.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        assert_eq!(&body[..], b"hello");
+    }
+
+    #[tokio::test]
+    async fn if_none_match_star_and_weak_and_list_forms_all_match() {
+        let state = test_state();
+        state.space.write_file("a.md", b"hello", None).unwrap();
+        let state = Arc::new(state);
+        let (etag, _) = validators(&state, "a.md").await;
+
+        for value in [
+            "*".to_string(),
+            format!("W/{etag}"),
+            format!("\"sha256:0000000000000000\", {etag}"),
+        ] {
+            let resp = conditional_get(&state, "a.md", &[("if-none-match", &value)]).await;
+            assert_eq!(resp.status(), StatusCode::NOT_MODIFIED, "{value}");
+        }
+    }
+
 }
