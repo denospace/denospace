@@ -27,10 +27,11 @@ html {
   --ui-surface-section-background-color: var(--subtle-background-color);
   --ui-surface-hover-background-color: var(--subtle-background-color);
 
-  // A hair off white, warmed toward the accent. Pure #fff with neutral greys
-  // is what makes hairlines and panel edges read as drawn on rather than
-  // printed.
-  --root-background-color: #fdfcfa;
+  // The Tufte view's paper, so all three layouts stand on the same ground --
+  // switching view should change the typography, not the colour of the page.
+  // Taken from `public/css/hugo-tufte.min.css`, which is what elliott.io
+  // actually serves; see the Tufte block in `editor.scss`.
+  --root-background-color: #f9f9f9;
   --root-color: #2b2927;
 
   --top-color: inherit;
@@ -261,7 +262,8 @@ html[data-theme="dark"] {
   // dark value; the rest reference tokens that already flip with the theme.
   --ui-surface-border-color: #444;
 
-  --root-background-color: #1b1917;
+  // The Tufte view's paper after nightfall, for the same reason.
+  --root-background-color: #151513;
   --root-color: #ece7e1;
 
   --top-signature-background-color: #22283f;
