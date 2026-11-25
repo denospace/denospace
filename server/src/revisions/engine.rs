@@ -665,7 +665,7 @@ mod tests {
     fn a_vanished_untracked_path_does_not_block_later_commits_for_its_author() {
         let dir = tempfile::tempdir().unwrap();
         std::fs::write(dir.path().join("seed.md"), b"seed").unwrap();
-        let handle = RevisionEngine::start(managed(&dir), None, Timing::default(), None);
+        let handle = RevisionEngine::start(managed(&dir), None);
         handle.commit_now();
 
         std::fs::write(dir.path().join("gone.md"), b"ephemeral").unwrap();
