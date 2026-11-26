@@ -1,5 +1,11 @@
 import { expect, test } from "vitest";
-import { createsDenoteNote, parseKeywordInput } from "./denote.ts";
+import {
+  createsDenoteNote,
+  denotePromptNames,
+  parseKeywordInput,
+  promptsWith,
+  readPromptNames,
+} from "./denote.ts";
 
 test("Keywords split on commas, as Denote's completing-read-multiple does", () => {
   // Whitespace does *not* separate keywords: a multi-word keyword is joined by
@@ -55,4 +61,82 @@ test("A phrase naming a file is taken literally", () => {
 test("An empty phrase creates nothing", () => {
   expect(createsDenoteNote("", aNote)).toBe(false);
   expect(createsDenoteNote("   ", aNote)).toBe(false);
+});
+
+// `denote-prompts`: the list that makes one creation command out of seven.
+
+test("Unset means Denote's own default, not no prompts", () => {
+  // The distinction matters: a space with no `denote.prompts` should ask for a
+  // title and keywords, while someone who wrote `denote.prompts = {}` has said
+  // to ask nothing and mean it.
+  expect(readPromptNames(undefined).prompts).toEqual(["title", "keywords"]);
+  expect(readPromptNames(null).prompts).toEqual(["title", "keywords"]);
+  expect(readPromptNames("title").prompts).toEqual(["title", "keywords"]);
+  expect(readPromptNames([]).prompts).toEqual([]);
+});
+
+test("The configured order is the order asked", () => {
+  expect(readPromptNames(["keywords", "title"]).prompts).toEqual([
+    "keywords",
+    "title",
+  ]);
+  expect(
+    readPromptNames(["title", "subdirectory", "keywords"]).prompts,
+  ).toEqual(["title", "subdirectory", "keywords"]);
+});
+
+test("Every prompt name Denote uses is accepted", () => {
+  // The hyphen in `file-type` is Denote's spelling, so a `denote-prompts`
+  // value translates across without being rewritten.
+  expect(readPromptNames([...denotePromptNames])).toEqual({
+    prompts: [...denotePromptNames],
+    unknown: [],
+  });
+});
+
+test("An unrecognised prompt is dropped and reported", () => {
+  // Dropped so a typo cannot stop you making a note; reported so a misspelled
+  // `title` does not quietly produce untitled ones.
+  const read = readPromptNames(["title", "titel", "keywords"]);
+  expect(read.prompts).toEqual(["title", "keywords"]);
+  expect(read.unknown).toEqual(["titel"]);
+});
+
+test("A prompt asked twice is asked once, where it was first put", () => {
+  const read = readPromptNames(["keywords", "title", "keywords"]);
+  expect(read.prompts).toEqual(["keywords", "title"]);
+  expect(read.unknown).toEqual([]);
+});
+
+test("Blank entries are not prompts and are not complained about", () => {
+  const read = readPromptNames(["title", "", "   ", "keywords"]);
+  expect(read.prompts).toEqual(["title", "keywords"]);
+  expect(read.unknown).toEqual([]);
+});
+
+test("A variant appends its own prompt", () => {
+  // `denote-signature` is `denote-prompts` plus `signature`, asked last.
+  expect(promptsWith(["title", "keywords"], "signature")).toEqual([
+    "title",
+    "keywords",
+    "signature",
+  ]);
+  expect(promptsWith(["title", "keywords"])).toEqual(["title", "keywords"]);
+});
+
+test("A variant's prompt stays where the configuration put it", () => {
+  // Someone who configured `signature` first meant to be asked first, and
+  // `Denote: New Note with Signature` should not ask again at the end.
+  expect(promptsWith(["signature", "title"], "signature")).toEqual([
+    "signature",
+    "title",
+  ]);
+});
+
+test("Appending leaves the configured list alone", () => {
+  // The list is read once per command and handed to every variant, so a
+  // variant that mutated it would leak its extra prompt into the next one.
+  const configured = readPromptNames(["title"]).prompts;
+  promptsWith(configured, "date");
+  expect(configured).toEqual(["title"]);
 });

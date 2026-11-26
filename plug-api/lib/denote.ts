@@ -514,6 +514,19 @@ export function denoteAttachmentName(
   });
 }
 
+/**
+ * The page name for a Denote file name.
+ *
+ * The two differ for Markdown, and only for Markdown: `pathFromPageName` adds
+ * `.md` to any page name that does not already end in one of the *other* page
+ * extensions, so a page named `X.md` is written to the path `X.md.md` -- which
+ * the ref regexp rejects, so the write fails outright. An Org note keeps its
+ * `.org`, because carrying the extension is what makes it one.
+ */
+export function denotePageName(fileName: string): string {
+  return fileName.replace(/\.md$/, "");
+}
+
 export function denoteExtension(fileType: DenoteFileType): string {
   switch (fileType) {
     case "org":
@@ -776,9 +789,7 @@ export function isJournalEntryName(
     return false;
   }
   const parsed = parseDenoteName(name);
-  return (
-    !!parsed?.identifier && parsed.keywords.includes(journal.keyword)
-  );
+  return !!parsed?.identifier && parsed.keywords.includes(journal.keyword);
 }
 
 /** `YYYYMMDD` — the identifier prefix every entry for a day shares. */

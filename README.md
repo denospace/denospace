@@ -64,6 +64,11 @@ everywhere.
 |---|---|
 | `Denote: New Note` | `denote` |
 | `Denote: New Note with Signature` | `denote-signature` |
+| `Denote: New Note of Type` | `denote-type` |
+| `Denote: New Note with Date` | `denote-date` |
+| `Denote: New Note in Subdirectory` | `denote-subdirectory` |
+| `Denote: New Note from Template` | `denote-template` |
+| `Denote: New Note from Region` | `denote-region` |
 | `Denote: Insert or Edit Link` (`Alt-i`) | `denote-link-or-create`, `org-insert-link` |
 | `Denote: Insert Web Link` (`Shift-Alt-i`) | `org-insert-link`, `org-cliplink` |
 | `Zotero: Insert Citation` | `citar-insert-citation` |
@@ -454,10 +459,17 @@ is left visible in the title rather than silently dropped.
 
 | Key | Default | Meaning |
 |---|---|---|
+| `denote.prompts` | `{ "title", "keywords" }` | What creating a note asks, and in what order |
 | `denote.fileType` | `org` | Format new notes are written in |
 | `denote.renameOnSave` | `true` | Rename the file when its front matter changes |
 | `denote.updateDblocksOnSave` | `true` | Regenerate dynamic blocks on save |
 | `denote.updateDblocksOnOpen` | `true` | Regenerate dynamic blocks when a note is opened |
+
+`denote.prompts` is `denote-prompts`, by the same names: `title`, `keywords`,
+`signature`, `date`, `file-type`, `subdirectory` and `template`. It applies to
+every creation command, because each of those is this list with one prompt
+appended — which is all `denote-signature`, `denote-type` and the rest are in
+Emacs. An unknown name is dropped and reported.
 
 If you keep the library in Emacs, exclude its droppings — otherwise a backup
 per note is indexed as an attachment:
@@ -979,10 +991,16 @@ placeholders and rewrite them underneath Syncthing.
   Mentions. Linking by identifier, which is what the `[[` completion writes,
   does.
 
+* **Denote's `text` file type cannot be created.** It writes `.txt`, which is
+  a document here rather than a page: not indexed, and not openable as a note.
+  A library that already holds `.txt` notes still parses as one, so this is
+  only about `denote.fileType` and `Denote: New Note of Type`, which offer the
+  Org and Markdown types alone.
+
 ## Documentation
 
 * **[docs/Denote.md](docs/Denote.md)** — the naming scheme, front matter,
-  linking, dynamic blocks, and a roadmap of the ~50 `denote-*` commands
+  linking, dynamic blocks, and a roadmap of the 95 `denote-*` commands
 * **[docs/Org Mode.md](docs/Org%20Mode.md)** — supported syntax and how the
   parser works
 

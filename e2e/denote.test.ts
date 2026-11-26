@@ -276,6 +276,14 @@ test.describe("Following a Denote link by keyboard", () => {
     await expect(sbPage.locator("#sb-editor .cm-content")).toContainText(
       "Issues of Law",
     );
+    // Wait for the *link* to be drawn, not just the page: a denote link is
+    // rendered as its description, and where a cursor placed in the raw text
+    // ends up depends on whether that widget is there yet. Without this the
+    // test was a race -- it passed alone and timed out when another file ran
+    // before it, which looked like a keybinding failure and was not.
+    await expect(sbPage.locator("#sb-editor .cm-content")).toContainText(
+      "Court Costs Relating to Evictions",
+    );
 
     // Put the cursor inside the link's target rather than clicking it, which
     // would navigate on its own and prove nothing about the keybinding.
@@ -291,7 +299,7 @@ test.describe("Following a Denote link by keyboard", () => {
     expect(moved).toBeGreaterThan(0);
 
     await sbPage.keyboard.press(`${mod}+Enter`);
-    await expect(currentPage(sbPage)).toHaveValue(COSTS, { timeout: 15_000 });
+    await expect(currentPage(sbPage)).toHaveValue(COSTS, { timeout: 20_000 });
     await expect(sbPage.locator("#sb-editor .cm-content")).toContainText(
       "Court Costs Relating to Evictions",
     );
@@ -322,9 +330,16 @@ test.describe("Creating a Denote note", () => {
   async function finishKeywords(page: any) {
     const filter = page.locator(".sb-modal-box input, .sb-modal input").first();
     await expect(filter).toBeVisible({ timeout: 20_000 });
-    // Escape on the filter input means "that is all", as an empty answer does
-    // in Denote's own keyword prompt.
-    await filter.press("Escape");
+    // Takes the prompt's own "Done" row rather than pressing Escape. Both end
+    // the prompt the same way, but Escape is unreliable to drive: the prompt is
+    // a loop of separate filter boxes, and a keypress aimed at a box Preact is
+    // in the middle of replacing reaches a detached node whose handler resolves
+    // a promise nothing awaits, leaving the prompt open. A click re-resolves
+    // the locator and waits for the element to be stable first.
+    await page
+      .locator(".sb-result-list .sb-option", { hasText: /Done/ })
+      .first()
+      .click();
     await page.waitForTimeout(600);
   }
 
@@ -367,10 +382,15 @@ test.describe("Creating a Denote note", () => {
 
     // The name is built from the title and keywords, each sluggified by its own
     // rule: the title hyphenates, a keyword joins its words.
-    const name = await currentPage(sbPage).inputValue();
-    expect(name).toMatch(
+    //
+    // Asserted with `toHaveValue` rather than read once: creating a note goes
+    // through a write and a navigation, so a single `inputValue()` here can
+    // still catch the page it started from.
+    await expect(currentPage(sbPage)).toHaveValue(
       /^\d{8}T\d{6}--kiemle-hagood-company-v-daniels__caselaw_costs_trust\.org$/,
+      { timeout: 20_000 },
     );
+    const name = await currentPage(sbPage).inputValue();
 
     const identifier = name.slice(0, 15);
     const body = await sbPage.locator("#sb-editor .cm-content").innerText();
@@ -397,6 +417,10 @@ test.describe("Creating a Denote note", () => {
     await answer(sbPage, "Freshly Made Note");
     await newKeyword(sbPage, "fresh");
     await finishKeywords(sbPage);
+    await expect(currentPage(sbPage)).toHaveValue(
+      /^\d{8}T\d{6}--freshly-made-note__fresh\.org$/,
+      { timeout: 20_000 },
+    );
     const created = await currentPage(sbPage).inputValue();
     const identifier = created.slice(0, 15);
 
@@ -432,10 +456,10 @@ test.describe("Creating a Denote note", () => {
     await finishKeywords(sbPage);
     await answer(sbPage, "coa div1");
 
-    const name = await currentPage(sbPage).inputValue();
     // A signature joins its words with `=`, which is its own slug rule.
-    expect(name).toMatch(
+    await expect(currentPage(sbPage)).toHaveValue(
       /^\d{8}T\d{6}==coa=div1--nature-of-unlawful-detainer__ud\.org$/,
+      { timeout: 20_000 },
     );
     await expect(sbPage.locator("#sb-editor .cm-content")).toContainText(
       "#+signature:  coa=div1",

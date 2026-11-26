@@ -7,6 +7,7 @@ import {
   denoteIdentifier,
   denoteIdentifierToDate,
   denoteOrgTimestamp,
+  denotePageName,
   extractDenoteKeywords,
   formatDenoteFrontMatter,
   isDenoteNoteFile,
@@ -403,4 +404,25 @@ test("The next child keeps its siblings' width", () => {
   expect(nextChildSignature("1", ["1=1", "1=2"])).toBe("1=3");
   expect(nextChildSignature(undefined, ["21", "40"])).toBe("41");
   expect(nextSiblingSignature("21=14", ["21=14", "21=15"])).toBe("21=16");
+});
+
+test("A Markdown note's page name drops the extension, an Org note's keeps it", () => {
+  // `pathFromPageName` adds `.md` back to a name that does not already end in
+  // another page extension, so a page name of `X.md` is written to `X.md.md`
+  // -- a path the ref regexp rejects, which fails the write with "path is not
+  // writable". This is why `denote.fileType = "markdown-yaml"` could not make
+  // a note at all.
+  expect(denotePageName("20240125T164237--court-costs.md")).toBe(
+    "20240125T164237--court-costs",
+  );
+  expect(denotePageName("20240125T164237--court-costs.org")).toBe(
+    "20240125T164237--court-costs.org",
+  );
+  expect(denotePageName("journal/20240125T164237--monday.md")).toBe(
+    "journal/20240125T164237--monday",
+  );
+  // Only the extension, and only at the end: a `.md` inside the slug stays.
+  expect(denotePageName("20240125T164237--notes-on-md.org")).toBe(
+    "20240125T164237--notes-on-md.org",
+  );
 });

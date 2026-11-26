@@ -63,15 +63,40 @@ SilverBullet renders such a link as its description alone, resolves the identifi
 Resolution uses the file list rather than the index, because every note's name begins with its own identifier. That keeps it free of ordering problems during a full reindex, and means a link resolves as soon as its target file exists.
 
 # Creating notes
-**Denote: New Note** prompts for a title and keywords, then writes a correctly named file with front matter into the space root — what `denote-directory` means, since Denote keeps a flat library and relies on keywords rather than folders. **Denote: New Note with Signature** additionally prompts for the signature.
+**Denote: New Note** prompts for a title and keywords, then writes a correctly named file with front matter into the space root — what `denote-directory` means, since Denote keeps a flat library and relies on keywords rather than folders.
 
-Keywords are chosen from a picker that completes over every keyword already in the library, showing how many notes carry each — keeping a library's vocabulary consistent is most of what completion is for. Pick as many as you like; **Escape** ends the prompt, as an empty answer does in Denote. A keyword not yet in use is entered through the **New keyword** row.
+## The prompt pipeline
+Denote's creation commands are not seven separate things. `denote` asks what `denote-prompts` lists, which defaults to title then keywords, and every variant is that same list with **one prompt appended**. That is the design here too: one pipeline, and a command says only which prompt it exists for.
+
+| Command | Appends | Emacs |
+|---|---|---|
+| **Denote: New Note** | — | `denote` |
+| **Denote: New Note with Signature** | the signature | `denote-signature` |
+| **Denote: New Note of Type** | the file format | `denote-type` |
+| **Denote: New Note with Date** | the date the identifier is minted from | `denote-date` |
+| **Denote: New Note in Subdirectory** | the directory to write into | `denote-subdirectory` |
+| **Denote: New Note from Template** | the body to start with | `denote-template` |
+| **Denote: New Note from Region** | — (the selection becomes the body) | `denote-region` |
+
+Set `denote.prompts` to change what **every** one of them asks, and in what order:
+
+~~~lua
+config.set("denote.prompts", { "title", "keywords", "subdirectory" })
+~~~
+
+The names are `denote-prompts`' own — `title`, `keywords`, `signature`, `date`, `file-type`, `subdirectory` and `template` — so a value copied out of an Emacs config translates across unchanged. An unrecognised name is dropped and reported rather than silently ignored, since a misspelled `title` would otherwise quietly make untitled notes. A prompt a variant exists for that is already in the list is asked where the list puts it, not a second time at the end.
+
+Two deliberate differences from Denote. A note here always needs a title, even with `title` left out of the list, because a library is read through pickers and views that show titles and a row with nothing in it cannot be found. And `denote-templates` lives in an init file in Emacs; the equivalent here already exists as pages tagged `meta/template/page`, so **Denote: New Note from Template** reads those — including their `|^|` cursor marker — rather than introducing a second kind of template.
+
+Keywords are chosen from a picker that completes over every keyword already in the library, showing how many notes carry each — keeping a library's vocabulary consistent is most of what completion is for. Pick as many as you like; the **✓ Done** row ends the prompt, as does **Escape**, which is Denote's empty answer. A keyword not yet in use is entered through the **＋ New keyword** row.
+
+The same prompt both adds and removes, which is why there is one `Denote: Set Keywords` rather than Denote's add/remove pair: keywords the note already carries are listed first as **✕** rows, and taking one takes it off. Denote's `-add-keywords` and `-remove-keywords` are for files marked in Dired, not for the file in front of you.
 
 Typed keywords are separated by **commas**, matching Denote's `completing-read-multiple`. Whitespace does *not* separate them: `Genuine Issue Trial` is one keyword, sluggified to `genuineissuetrial`. That is exactly why keyword sluggification joins words instead of hyphenating them.
 
 The identifier is the creation time to the second, bumped forward if a note already holds it — an identifier is a note's identity, so a duplicate would break every inbound link that resolves against it.
 
-Set `denote.fileType` to `org` (the default), `markdown-yaml`, `markdown-toml` or `text` to choose the format new notes are written in.
+Set `denote.fileType` to `org` (the default), `markdown-yaml` or `markdown-toml` to choose the format new notes are written in; **Denote: New Note of Type** overrides it for one note. Denote's fourth type, `text`, is read but not offered: it writes `.txt`, which here is a document rather than a page — not indexed, and not openable as a note.
 
 # Open or create, link or create
 Typing a name the space does not hold and taking the page picker's **Create**
@@ -280,8 +305,11 @@ infrastructure, whatever its keywords: it is content, and stays findable.
 
 # Roadmap
 
-Denote has ~50 interactive commands. The grouping below is by how much daily
-work each one carries, not by how hard it is.
+Denote has 95 interactive commands, counting the extension packages
+(`denote-sequence`, `denote-journal`, `denote-org`, `denote-silo`,
+`denote-markdown`). That is a count of the `(interactive)` forms in the 4.3.0
+sources, not of the manual, whose function index is empty. The grouping below
+is by how much daily work each one carries, not by how hard it is.
 
 ## 1. Daily drivers
 The commands a Denote user reaches for constantly, and typically binds to a
@@ -336,7 +364,9 @@ already does well.
 * **Journal** (`denote-journal`) — built, calendar included; see
   [[#Journal calendar]].
 * **Sequence notes** (`denote-sequence`) — built; see [[#Signatures as
-  sequences]]. Reparenting a whole branch at once is not.
+  sequences]]. `denote-sequence-reparent` and `-reparent-recursive` are not,
+  which makes a folgezettel tree write-once: a note can be given a signature
+  and children hung off it, but a branch cannot be moved under a new parent.
 * **The other dynamic block types** — `denote-files` and
   `denote-files-as-headings` remain.
 * **Silos** (`denote-silo`) — several independent Denote directories.
@@ -344,11 +374,6 @@ already does well.
   cover the hygiene and keyword views; the link graph, which the existing
   object-graph plug could render, does not exist yet.
 * **Bibliography** (`citar-denote`) — built on Zotero; see the README.
-
-## 5. Smaller conveniences
-`denote-region` (make a note from the selected text), `denote-template`,
-`denote-type`, `denote-date`, `denote-subdirectory`, and the query-filter
-commands (`denote-query-*`).
 
 # Known gaps
 * **Titles in the top bar.** The picker, fuzzy search and link completion all

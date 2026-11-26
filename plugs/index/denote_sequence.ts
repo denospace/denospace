@@ -230,7 +230,9 @@ async function newInSequence(relation: "child" | "sibling"): Promise<void> {
   });
   const text = await space.readPage(name);
   await editor.navigate({
-    path: name as `${string}.${string}`,
+    // The page name of a Markdown note carries no extension; a ref's path
+    // always does.
+    path: pathFromPageName(name),
     details: { type: "position", pos: text.length },
   });
 }

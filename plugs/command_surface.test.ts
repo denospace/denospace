@@ -160,4 +160,28 @@ test("a command that writes says so", () => {
   // date rather than reading the open page.
   const openDate = all.find((c) => c.name === "Journal: Open Date");
   expect(openDate?.requireMode).toBe("rw");
+
+  // The creation commands write too, but they make a note rather than
+  // changing one, so a page in front of them is not required -- only
+  // `Denote: New Note from Region`, which reads the selection.
+  for (const name of [
+    "Denote: New Note",
+    "Denote: New Note with Signature",
+    "Denote: New Note of Type",
+    "Denote: New Note with Date",
+    "Denote: New Note in Subdirectory",
+    "Denote: New Note from Template",
+    "Denote: New Note from Region",
+  ]) {
+    const command = all.find((c) => c.name === name);
+    expect(command, `${name} is missing from the manifests`).toBeDefined();
+    expect(
+      command!.requireMode,
+      `${name} writes but is offered read-only`,
+    ).toBe("rw");
+  }
+  const region = all.find((c) => c.name === "Denote: New Note from Region");
+  expect(region?.requireEditor, "the region command reads a selection").toBe(
+    "page",
+  );
 });

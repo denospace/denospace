@@ -172,11 +172,41 @@ functions:
     events:
       - page:saved
 
+  # `denote` and its variants. Each is the same pipeline -- `denote.prompts`,
+  # which defaults to title then keywords -- with one prompt appended, which is
+  # all the Emacs commands they are named for are.
   newDenoteNoteWithSignature:
     path: ./denote.ts:newDenoteNoteWithSignatureCommand
     command:
       name: "Denote: New Note with Signature"
       requireMode: rw
+  newDenoteNoteOfType:
+    path: ./denote.ts:newDenoteNoteOfTypeCommand
+    command:
+      name: "Denote: New Note of Type"
+      requireMode: rw
+  newDenoteNoteWithDate:
+    path: ./denote.ts:newDenoteNoteWithDateCommand
+    command:
+      name: "Denote: New Note with Date"
+      requireMode: rw
+  newDenoteNoteInSubdirectory:
+    path: ./denote.ts:newDenoteNoteInSubdirectoryCommand
+    command:
+      name: "Denote: New Note in Subdirectory"
+      requireMode: rw
+  newDenoteNoteFromTemplate:
+    path: ./denote.ts:newDenoteNoteFromTemplateCommand
+    command:
+      name: "Denote: New Note from Template"
+      requireMode: rw
+  # Reads the selection, so unlike the rest it needs a page in front of it.
+  newDenoteNoteFromRegion:
+    path: ./denote.ts:newDenoteNoteFromRegionCommand
+    command:
+      name: "Denote: New Note from Region"
+      requireMode: rw
+      requireEditor: page
   # `denote-link-or-create` (M-i) and `org-insert-link` (M-I) under one key:
   # on a link there is a link to edit, off one there is a link to make.
   denoteLinkOrCreate:

@@ -9,6 +9,7 @@ import {
   denoteIdentifier,
   denoteIdentifierDate,
   denoteLinkDescription,
+  denotePageName,
   formatDenoteFrontMatter,
   formatDenoteName,
   isDenoteNoteFile,
@@ -356,6 +357,12 @@ export type NewNoteSpec = {
    * identifier. Defaults to now.
    */
   date?: Date;
+  /**
+   * What the note starts with below its front matter: a `denote-templates`
+   * entry, or the region `denote-region` was called on. A new note has an
+   * empty body without one.
+   */
+  body?: string;
 };
 
 /**
@@ -384,7 +391,9 @@ export async function createDenoteNote(spec: NewNoteSpec): Promise<string> {
     signature,
     extension: denoteExtension(fileType),
   });
-  const pageName = spec.directory ? `${spec.directory}/${name}` : name;
+  const pageName = denotePageName(
+    spec.directory ? `${spec.directory}/${name}` : name,
+  );
   const frontMatter = formatDenoteFrontMatter(
     {
       title: spec.title,
@@ -396,13 +405,16 @@ export async function createDenoteNote(spec: NewNoteSpec): Promise<string> {
     },
     fileType,
   );
-  await space.writePage(pageName, frontMatter);
+  // Every front matter spec ends in a blank line, so a body follows directly.
+  await space.writePage(
+    pageName,
+    spec.body ? `${frontMatter}${spec.body}` : frontMatter,
+  );
   // The new note has to be resolvable by the links that will point at it.
   invalidateDenoteIdentifiers();
   return pageName;
 }
 
-/** Every keyword in the library, with how many notes carry it. */
 /** Every keyword in the library, with how many notes carry it. */
 export async function denoteKeywordCounts(): Promise<[string, number][]> {
   const notes = await index.queryLuaObjects<DenoteObject>("denote", {});
@@ -481,9 +493,11 @@ export async function promptForKeywords(
     const choice = await editor.filterBox(
       "Keyword",
       options,
+      // Names the Done row as well as Escape: the row is the discoverable
+      // way out, and Escape is the one a Denote user already knows.
       selected.length
-        ? `Selected: ${selected.join(", ")} — Enter to add another, Escape when done`
-        : "Pick a keyword, or type a new one; Escape when done",
+        ? `Selected: ${selected.join(", ")} — pick another, or take Done (Escape also finishes)`
+        : "Pick a keyword, or type a new one; Done or Escape when finished",
       "",
       // Denote's own prompt is `completing-read-multiple`, which completes
       // what the library already uses and takes anything else you type. A
@@ -527,80 +541,478 @@ type CreatedNote = {
   identifier: string;
   title: string;
   signature?: string;
+  /**
+   * Where the cursor belongs, counted back from the end of the file. A
+   * template's `|^|` is the only thing that moves it off the end.
+   */
+  tailOffset: number;
+};
+
+// ---------------------------------------------------------------------------
+// `denote-prompts`: the questions creating a note asks
+// ---------------------------------------------------------------------------
+
+/**
+ * The prompts `denote.prompts` can ask for, by the names `denote-prompts`
+ * uses for them.
+ *
+ * Denote's creation commands are not seven implementations of the same thing.
+ * `denote` runs `denote-prompts`, which defaults to `(title keywords)`, and
+ * every variant is that list with *one prompt appended*: `denote-signature`
+ * appends `signature`, `denote-subdirectory` appends `subdirectory`,
+ * `denote-type` appends `file-type`, and so on. That is the whole design, so
+ * it is the design here -- one pipeline, and a command says only which prompt
+ * it exists for.
+ */
+export const denotePromptNames = [
+  "title",
+  "keywords",
+  "signature",
+  "date",
+  "file-type",
+  "subdirectory",
+  "template",
+] as const;
+
+export type DenotePromptName = (typeof denotePromptNames)[number];
+
+/** `denote-prompts`' own default. */
+const defaultPromptNames: DenotePromptName[] = ["title", "keywords"];
+
+/**
+ * `denote.prompts`, with anything unrecognised separated out for reporting.
+ *
+ * A typo should not stop you making a note, so an unknown name is dropped
+ * rather than thrown -- but dropped silently it would make untitled notes out
+ * of a misspelled `title` and leave you guessing, which is why the caller says
+ * so. Missing or not a list means Denote's default, not no prompts at all: an
+ * empty `denote.prompts` is a thing someone might mean, a missing one is not.
+ */
+export function readPromptNames(configured: unknown): {
+  prompts: DenotePromptName[];
+  unknown: string[];
+} {
+  if (!Array.isArray(configured)) {
+    return { prompts: [...defaultPromptNames], unknown: [] };
+  }
+  const prompts: DenotePromptName[] = [];
+  const unknown: string[] = [];
+  for (const entry of configured) {
+    const name = String(entry).trim();
+    if (!name) {
+      continue;
+    }
+    if (!(denotePromptNames as readonly string[]).includes(name)) {
+      unknown.push(name);
+      continue;
+    }
+    // Asking the same question twice has no useful reading, so the first
+    // mention is where it is asked.
+    if (!prompts.includes(name as DenotePromptName)) {
+      prompts.push(name as DenotePromptName);
+    }
+  }
+  return { prompts, unknown };
+}
+
+/**
+ * The prompts a command runs: the configured list, plus the one that command
+ * exists for.
+ *
+ * Appended, as Denote appends -- `denote-signature` asks for the signature
+ * last, after the questions you always answer. Already in the list, it stays
+ * where the configuration put it: someone who put `signature` first meant it.
+ */
+export function promptsWith(
+  prompts: DenotePromptName[],
+  extra?: DenotePromptName,
+): DenotePromptName[] {
+  if (!extra || prompts.includes(extra)) {
+    return prompts;
+  }
+  return [...prompts, extra];
+}
+
+/** What the prompts fill in between them. */
+type NoteDraft = NewNoteSpec & { tailOffset: number };
+
+/** A prompt fills in part of the draft, or answers false to abandon the note. */
+type NotePrompt = (draft: NoteDraft) => Promise<boolean>;
+
+/** The placeholder page templates already use to say where the cursor goes. */
+const cursorMarker = "|^|";
+
+const rootDirectoryOption = "\uFF0F  The library root";
+const newDirectoryOption = "\uFF0B  New subdirectory\u2026";
+
+/**
+ * `denote-file-type`, described by what each one actually writes.
+ *
+ * Denote's fourth type, `text`, is missing: it writes `.txt`, which here is a
+ * document rather than a page -- not indexed, not openable as a note, and so
+ * not something to offer. A library that already contains `.txt` notes still
+ * *parses* as one; this is only about what can be created.
+ */
+const fileTypeOptions: { type: DenoteFileType; label: string }[] = [
+  { type: "org", label: "Org" },
+  { type: "markdown-yaml", label: "Markdown, YAML front matter" },
+  { type: "markdown-toml", label: "Markdown, TOML front matter" },
+];
+
+/**
+ * The directories the library already uses, shallowest first.
+ *
+ * Read from the notes rather than from the file list, because
+ * `denote-subdirectory-prompt` completes over subdirectories of
+ * `denote-directory` and nothing else. The file list would additionally offer
+ * every folder of the shipped `Library/Std` documentation -- dozens of rows,
+ * none of them anywhere a note belongs, and read-only besides.
+ */
+async function denoteDirectories(): Promise<string[]> {
+  const notes = await index.queryLuaObjects<DenoteObject>("denote", {});
+  const directories = new Set<string>();
+  for (const note of notes) {
+    const parts = note.page.split("/");
+    for (let i = 1; i < parts.length; i++) {
+      directories.add(parts.slice(0, i).join("/"));
+    }
+  }
+  return [...directories].sort(
+    (a, b) => a.split("/").length - b.split("/").length || a.localeCompare(b),
+  );
+}
+
+/** A page name as a Lua string literal, for the template expression below. */
+function luaString(value: string): string {
+  return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+}
+
+const notePrompts: Record<DenotePromptName, NotePrompt> = {
+  title: async (draft) => {
+    const answer = await editor.prompt("Title:", draft.title);
+    if (answer === undefined) {
+      return false;
+    }
+    if (!answer.trim()) {
+      await editor.flashNotification("A note needs a title", "error");
+      return false;
+    }
+    draft.title = answer.trim();
+    return true;
+  },
+
+  keywords: async (draft) => {
+    const chosen = await promptForKeywords(draft.keywords);
+    if (chosen === undefined) {
+      return false;
+    }
+    draft.keywords = chosen;
+    return true;
+  },
+
+  signature: async (draft) => {
+    const answer = await editor.prompt("Signature:", draft.signature ?? "");
+    if (answer === undefined) {
+      return false;
+    }
+    draft.signature = answer.trim() || undefined;
+    return true;
+  },
+
+  date: async (draft) => {
+    const from = draft.date ?? new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const answer = await editor.prompt(
+      "Date (YYYY-MM-DD, optionally HH:MM):",
+      `${from.getFullYear()}-${pad(from.getMonth() + 1)}-${pad(from.getDate())}`,
+    );
+    if (answer === undefined) {
+      return false;
+    }
+    const parsed = parseLocalDate(answer.trim());
+    if (Number.isNaN(parsed.getTime())) {
+      await editor.flashNotification(`Not a date: ${answer}`, "error");
+      return false;
+    }
+    // The identifier is minted from this, so a note dated into the past sorts
+    // and is found by its own day -- the point of `denote-date`.
+    draft.date = parsed;
+    return true;
+  },
+
+  "file-type": async (draft) => {
+    const choice = await editor.filterBox(
+      "File type",
+      fileTypeOptions.map(({ type, label }) => ({
+        name: label,
+        description: denoteExtension(type),
+        fileType: type,
+      })),
+      "The format the new note is written in",
+    );
+    if (!choice) {
+      return false;
+    }
+    const picked = (choice as { fileType?: DenoteFileType }).fileType;
+    if (!picked) {
+      // Typed rather than picked, and matching nothing. The formats are a
+      // fixed set, so a name that is not one of them is not an answer.
+      await editor.flashNotification(
+        `No such file type: ${choice.name}`,
+        "error",
+      );
+      return false;
+    }
+    draft.fileType = picked;
+    return true;
+  },
+
+  subdirectory: async (draft) => {
+    const choice = await editor.filterBox(
+      "Subdirectory",
+      [
+        {
+          name: rootDirectoryOption,
+          description: "the flat library, where notes normally go",
+        },
+        { name: newDirectoryOption },
+        ...(await denoteDirectories()).map((directory) => ({
+          name: directory,
+        })),
+      ],
+      "The directory the new note is written into",
+    );
+    if (!choice) {
+      return false;
+    }
+    if (choice.name === rootDirectoryOption) {
+      draft.directory = undefined;
+      return true;
+    }
+    let typed = choice.name;
+    if (choice.name === newDirectoryOption) {
+      const answer = await editor.prompt("New subdirectory:", "");
+      if (answer === undefined) {
+        return false;
+      }
+      typed = answer;
+    }
+    // A directory that does not exist yet is a fine answer either way --
+    // writing the note creates it -- so a name typed past the end of the list
+    // is taken as meant, the same as one picked off it.
+    draft.directory = typed.trim().replace(/^\/+|\/+$/g, "") || undefined;
+    return true;
+  },
+
+  template: async (draft) => {
+    // `Denote: New Note from Region` has already put the selection in the
+    // body, and a template would overwrite it -- losing the text the command
+    // exists to keep. The selection wins, and says so, because this only
+    // happens to someone who has put `template` in `denote.prompts` and is
+    // owed an explanation for not being asked.
+    if (draft.body !== undefined) {
+      await editor.flashNotification(
+        "Keeping the selected text; no template applied",
+      );
+      return true;
+    }
+    // `denote-templates` is an alist in the user's init file; here the
+    // equivalent already exists as pages tagged `meta/template/page`, which
+    // is what every other template command in this fork reads.
+    const templates = await index.queryLuaObjects<PageMeta>(
+      "meta/template/page",
+      {},
+    );
+    if (templates.length === 0) {
+      await editor.flashNotification(
+        "No page is tagged meta/template/page",
+        "error",
+      );
+      return false;
+    }
+    const choice = await editor.filterBox(
+      "Template",
+      templates.map((template) => ({
+        name: template.name.split("/").pop() ?? template.name,
+        description:
+          (template as { description?: string }).description ?? template.name,
+        page: template.name,
+      })),
+      "The text the new note starts with",
+    );
+    const page = choice && (choice as { page?: string }).page;
+    if (!page) {
+      return false;
+    }
+    // Rendered through the same code every other template goes through, so a
+    // `${...}` expression behaves identically here. That is why this asks Lua
+    // instead of reading the page and stripping its front matter itself.
+    const body = String(
+      (await lua.evalExpression(`(template.fromPage(${luaString(page)}))()`)) ??
+        "",
+    );
+    const at = body.indexOf(cursorMarker);
+    if (at === -1) {
+      draft.body = body;
+      draft.tailOffset = 0;
+      return true;
+    }
+    draft.body = body.slice(0, at) + body.slice(at + cursorMarker.length);
+    draft.tailOffset = draft.body.length - at;
+    return true;
+  },
 };
 
 /**
- * Denote's note-creation prompts: title, then keywords, then optionally a
- * signature, per `denote-prompts`.
+ * Makes a note by asking what `denote.prompts` says to ask, plus the one
+ * prompt the calling command exists for.
  *
- * `defaultTitle` is what `denote-open-or-create` and `denote-link-or-create`
- * pass along — both use whatever was typed at the file prompt as the default
- * value of the title prompt, rather than making you type it twice.
+ * `options.defaultTitle` is what `denote-open-or-create` and
+ * `denote-link-or-create` pass along — both use whatever was typed at the file
+ * prompt as the default value of the title prompt, rather than making you type
+ * it twice. `options.body` is `denote-region`'s selection.
  *
- * Returns undefined when any prompt is cancelled, which aborts the whole
- * thing: an empty answer to Denote's title prompt is not a note.
+ * Returns undefined when any prompt is cancelled, which abandons the whole
+ * note: an empty answer to Denote's title prompt is not a note.
  */
 async function promptForNewNote(
-  withSignature: boolean,
-  defaultTitle?: string,
+  options: {
+    extra?: DenotePromptName;
+    defaultTitle?: string;
+    body?: string;
+  } = {},
 ): Promise<CreatedNote | undefined> {
-  const title = await editor.prompt("Title:", defaultTitle);
-  if (title === undefined) {
-    return;
+  const { prompts, unknown } = readPromptNames(
+    await system.getConfig("denote.prompts", undefined),
+  );
+  if (unknown.length > 0) {
+    await editor.flashNotification(
+      `denote.prompts: no such prompt: ${unknown.join(", ")}`,
+      "error",
+    );
   }
-  if (!title.trim()) {
+  const draft: NoteDraft = {
+    title: options.defaultTitle ?? "",
+    keywords: [],
+    body: options.body,
+    tailOffset: 0,
+  };
+  for (const name of promptsWith(prompts, options.extra)) {
+    if (!(await notePrompts[name](draft))) {
+      return;
+    }
+  }
+  // Reachable only from a `denote.prompts` with no `title` in it. Denote will
+  // make an untitled note; this will not, because a library here is read
+  // through pickers and views that show titles, and a row with nothing in it
+  // is not findable by the one thing it is indexed under.
+  if (!draft.title.trim()) {
     await editor.flashNotification("A note needs a title", "error");
     return;
   }
-  const keywords = await promptForKeywords();
-  if (keywords === undefined) {
-    return;
-  }
-  let signature: string | undefined;
-  if (withSignature) {
-    const answer = await editor.prompt("Signature:", "");
-    if (answer === undefined) {
-      return;
-    }
-    signature = answer.trim() || undefined;
-  }
+  const title = draft.title.trim();
   const name = await createDenoteNote({
-    title: title.trim(),
-    keywords,
-    signature,
+    title,
+    keywords: draft.keywords,
+    signature: draft.signature,
+    fileType: draft.fileType,
+    directory: draft.directory,
+    date: draft.date,
+    body: draft.body,
   });
   const parsed = parseDenoteName(name);
   return {
     name,
     // `createDenoteNote` just minted the name, so it always parses.
     identifier: parsed?.identifier ?? "",
-    title: title.trim(),
+    title,
     signature: parsed?.signature,
+    tailOffset: draft.tailOffset,
   };
 }
 
-/** Opens a newly created note with the cursor in the body, not the front matter. */
-async function openNewNote(name: string): Promise<void> {
+/**
+ * Opens a newly created note with the cursor in the body, not the front
+ * matter — or at a template's `|^|`, which is the only thing that puts it
+ * anywhere but the end.
+ */
+async function openNewNote(name: string, tailOffset = 0): Promise<void> {
   const text = await space.readPage(name);
   await editor.navigate({
-    path: name as `${string}.${string}`,
-    details: { type: "position", pos: text.length },
+    // A ref carries a *path*, which always has an extension, while a Markdown
+    // page's name does not -- navigating to the bare name is rejected as an
+    // invalid ref.
+    path: pathFromPageName(name),
+    details: { type: "position", pos: Math.max(0, text.length - tailOffset) },
   });
 }
 
-async function promptForNote(withSignature: boolean): Promise<void> {
-  const created = await promptForNewNote(withSignature);
+async function promptForNote(extra?: DenotePromptName): Promise<void> {
+  const created = await promptForNewNote({ extra });
   if (created) {
-    await openNewNote(created.name);
+    await openNewNote(created.name, created.tailOffset);
   }
 }
 
+// Each of these is `denote` with one prompt appended, which is exactly what
+// the Emacs command named in its comment is.
+
 export function newDenoteNoteCommand(): Promise<void> {
-  return promptForNote(false);
+  return promptForNote();
 }
 
+/** `denote-signature`. */
 export function newDenoteNoteWithSignatureCommand(): Promise<void> {
-  return promptForNote(true);
+  return promptForNote("signature");
+}
+
+/** `denote-type`. */
+export function newDenoteNoteOfTypeCommand(): Promise<void> {
+  return promptForNote("file-type");
+}
+
+/** `denote-date`. */
+export function newDenoteNoteWithDateCommand(): Promise<void> {
+  return promptForNote("date");
+}
+
+/** `denote-subdirectory`. */
+export function newDenoteNoteInSubdirectoryCommand(): Promise<void> {
+  return promptForNote("subdirectory");
+}
+
+/** `denote-template`. */
+export function newDenoteNoteFromTemplateCommand(): Promise<void> {
+  return promptForNote("template");
+}
+
+/**
+ * `denote-region`: the selected text becomes the body of a new note.
+ *
+ * The selection is left where it is, as Denote leaves it — this lifts a
+ * passage into a note of its own, it does not cut it out. Linking the two is
+ * a separate decision, and `Denote: Insert or Edit Link` already makes a note
+ * out of a selection *and* links to it, which is the other thing you might
+ * have wanted.
+ */
+export async function newDenoteNoteFromRegionCommand(): Promise<void> {
+  const selection = await editor.getSelection();
+  const body = (await editor.getText()).slice(selection.from, selection.to);
+  if (!body.trim()) {
+    await editor.flashNotification(
+      "Select the text to make a note from",
+      "error",
+    );
+    return;
+  }
+  // No default title: Denote asks for one outright here, and the first line
+  // of a passage is a sentence, which makes a poor file name.
+  const created = await promptForNewNote({
+    body: body.endsWith("\n") ? body : `${body}\n`,
+  });
+  if (created) {
+    await openNewNote(created.name, created.tailOffset);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -653,9 +1065,9 @@ export async function denoteOpenOrCreate(phrase: string): Promise<void> {
     await editor.navigate(phrase);
     return;
   }
-  const created = await promptForNewNote(false, phrase.trim());
+  const created = await promptForNewNote({ defaultTitle: phrase.trim() });
   if (created) {
-    await openNewNote(created.name);
+    await openNewNote(created.name, created.tailOffset);
   }
 }
 
@@ -674,7 +1086,7 @@ export async function denoteCreateFromLink(option: {
   if (!title) {
     return;
   }
-  const created = await promptForNewNote(false, title);
+  const created = await promptForNewNote({ defaultTitle: title });
   if (!created) {
     // Cancelled: put back what was typed, so nothing is silently lost.
     await editor.insertAtCursor(title);
@@ -842,7 +1254,9 @@ export async function denoteLinkOrCreateCommand(): Promise<void> {
   let identifier: string;
   let description: string;
   if (choice.name === createNoteOption) {
-    const created = await promptForNewNote(false, selected || undefined);
+    const created = await promptForNewNote({
+      defaultTitle: selected || undefined,
+    });
     if (!created) {
       return;
     }
@@ -1750,7 +2164,9 @@ export async function denoteJournalOpenOrCreate(
   });
   const text = await space.readPage(pageName);
   await editor.navigate({
-    path: pageName as `${string}.${string}`,
+    // The page name of a Markdown note carries no extension; a ref's path
+    // always does.
+    path: pathFromPageName(pageName),
     details: { type: "position", pos: text.length },
   });
 }
