@@ -19,6 +19,18 @@ This defines the [JSON schema](https://json-schema.org/) for built-in configurat
 -- priority: 100
 
 -- UI categories for the configuration manager, listed in display order.
+-- The library itself comes first: it is what this fork is for, and these are
+-- the settings a Denote user arrives already knowing the names of.
+config.defineCategory {
+  name = "Denote",
+  description = "How notes are created and named: which questions you are asked, the file format, and whether a rename follows an edited front matter.",
+  priority = 60,
+}
+config.defineCategory {
+  name = "Journal",
+  description = "Where journal entries live, what keyword marks them, and how their titles are written.",
+  priority = 55,
+}
 config.defineCategory {
   name = "Editor",
   description = "Behavior of the page editor: brackets, wiki link rendering, emoji aliases, and similar editing affordances.",
@@ -565,5 +577,82 @@ config.set("actionButtons", {
       editor.goHistory(1)
     end,
   }
+})
+
+-- Every `denote.*` key, so the configuration manager can show them and a typo
+-- in a CONFIG page is reported rather than silently read as a default. The
+-- defaults here are the same ones the code falls back to; `denote-journal`'s
+-- are Denote's own.
+config.define("denote", {
+  description = "Denote: note creation, naming and the journal",
+  type = "object",
+  properties = {
+    prompts = {
+      type = "array",
+      items = {
+        type = "string",
+        enum = {
+          "title",
+          "keywords",
+          "signature",
+          "date",
+          "file-type",
+          "subdirectory",
+          "template",
+        },
+      },
+      default = { "title", "keywords" },
+      description = "`denote-prompts`: which questions creating a note asks, and in what order. Every creation command runs this list plus the one prompt it exists for, so `Denote: New Note with Signature` is this list with `signature` appended.",
+      ui = { category = "Denote", label = "Creation prompts", priority = 6 },
+    },
+    fileType = {
+      type = "string",
+      -- Denote's fourth type, `text`, is missing on purpose: it writes
+      -- `.txt`, which here is a document rather than a page.
+      enum = { "org", "markdown-yaml", "markdown-toml" },
+      default = "org",
+      description = "`denote-file-type`: the format new notes are written in. `Denote: New Note of Type` overrides it for one note.",
+      ui = { category = "Denote", label = "File type", priority = 5 },
+    },
+    renameOnSave = {
+      type = "boolean",
+      default = true,
+      description = "Rename a note's file when its front matter changes, so the name never disagrees with the title, keywords or signature inside it.",
+      ui = { category = "Denote", label = "Rename on save", priority = 4 },
+    },
+    updateDblocksOnSave = {
+      type = "boolean",
+      default = true,
+      description = "Regenerate dynamic blocks when a note is saved.",
+      ui = { category = "Denote", label = "Update dynamic blocks on save", priority = 3 },
+    },
+    updateDblocksOnOpen = {
+      type = "boolean",
+      default = true,
+      description = "Regenerate dynamic blocks when a note is opened.",
+      ui = { category = "Denote", label = "Update dynamic blocks on open", priority = 2 },
+    },
+    journalDirectory = {
+      type = "string",
+      default = "journal",
+      description = "`denote-journal-directory`: the one directory a flat library keeps, holding the dated entries.",
+      ui = { category = "Journal", label = "Journal directory", priority = 3 },
+    },
+    journalKeyword = {
+      type = "string",
+      default = "journal",
+      description = "`denote-journal-keyword`: the keyword that marks an entry as a journal entry. It is what the journal views and `Journal: Open Date` look for, not the directory alone.",
+      ui = { category = "Journal", label = "Journal keyword", priority = 2 },
+    },
+    journalTitleFormat = {
+      type = "string",
+      -- Not an enum: `denote-journal-title-format` also takes a format
+      -- string, and anything unrecognised is used as one.
+      default = "day-date-month-year-24h",
+      description = "`denote-journal-title-format`: `day`, `day-date-month-year`, `day-date-month-year-24h` or `day-date-month-year-12h`. Anything else is used as a time format string directly.",
+      ui = { category = "Journal", label = "Journal title format", priority = 1 },
+    },
+  },
+  additionalProperties = false,
 })
 ```
