@@ -291,11 +291,21 @@ sections above.
 * **Search the library** (`denote-grep`, `consult-denote-grep`) — built, as
   `Navigate: Search Notes` on `Alt-/`; see [[Library/Std/Pages/Search Notes]].
   Matching lines from the whole library, narrowing as you type, landing on the
-  line itself. What is *not* built is the refinement Denote's query buffer
-  offers on top of a search — `denote-query-focus-last-search`,
-  `-exclude-files`, `-only-include-files`, the keyword variants of those, and
-  `-query-sort-last-search`. Those narrow a result set that already exists,
-  which this view cannot do: each keystroke re-runs the query from scratch.
+  line itself.
+
+  Denote has two ways into that one search and so does this: as a modal it is
+  `consult-denote-grep`, a picker that closes on the match you take; **docked**
+  left or right, from the panel's own placement menu, it is `denote-grep`'s
+  query buffer, staying open while you walk the matches.
+
+  The query buffer's filters are built too — `Search: Exclude Files`,
+  `Only Include Files`, `Exclude Keyword`, `Only Keyword` and `Clear Filters`,
+  for `denote-query-exclude-files` and its family. They are buffer-local as
+  Denote's are: part of the search in front of you, gone next time.
+  `denote-query-focus-last-search` (search *within* the files the last search
+  matched) and `-query-sort-last-search` are not: both need the previous
+  result set kept, and this view re-runs its query from scratch on every
+  keystroke rather than holding one.
 
 ## 2. Keyword-centric browsing
 Denote deliberately has no folders: keywords *are* the organisation, so

@@ -780,6 +780,33 @@ under for a common one, since the limit short-circuits the scan.
 `Alt-` convention the fork uses for `Alt-i`. To swap them:
 `command.update { name = "Navigate: Search Notes", mac = "Cmd-/" }`.
 
+Denote has two commands over one search, and the difference is whether the
+results stay: `consult-denote-grep` is a picker that closes on the match you
+take, `denote-grep` is a buffer you walk. **Dock** this panel left or right
+from its own placement menu and it stops closing on selection — that is the
+buffer. The modal remains the default, because a single jump is the common
+case and a sidebar you have to close again is a worse way to make it.
+
+A buffer you keep is worth narrowing, which is what Denote's `denote-query-*`
+commands do to theirs:
+
+| Command | Emacs |
+|---|---|
+| `Search: Exclude Files` | `denote-query-exclude-files` |
+| `Search: Only Include Files` | `denote-query-only-include-files` |
+| `Search: Exclude Keyword` | `denote-query-exclude-files-with-keywords` |
+| `Search: Only Keyword` | `denote-query-only-include-files-with-keywords` |
+| `Search: Clear Filters` | `denote-query-clear-all-filters` |
+
+Filters are buffer-local in Denote and deliberately so here: a filter belongs
+to the search in front of you, and one left behind from an hour ago quietly
+hiding results is the failure worth designing out. While any are active the
+panel carries a row saying so, and taking that row clears them.
+
+The panel does not re-query when something else changes the filters, so the
+commands dispatch a `search:filtersChanged` event that the view lists in
+`refreshOn`; re-opening an already-visible panel leaves the rows it has.
+
 ### What a reference note tells you
 
 Opening a reference note should settle whether Zotero is worth the trip — a
