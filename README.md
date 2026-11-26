@@ -74,7 +74,7 @@ everywhere.
 | `Denote: Toggle Link Display` | `org-toggle-link-display` |
 | `Denote: Rename File from Front Matter` | `denote-rename-file-using-front-matter` |
 | `Denote: Rename` | `denote-rename-file` |
-| `Denote: Add Keywords` / `Remove Keywords` | `denote-keywords-add` / `-remove` |
+| `Denote: Set Keywords` | `denote-rename-file-keywords` |
 | `Denote: Set Signature` | `denote-rename-file-signature` |
 | `Denote: Browse by Signature` | `denote-sort-dired` |
 | `Denote: Signature Parent` / `Children` / `Siblings` / `Next` / `Previous` | `denote-sequence-find` |

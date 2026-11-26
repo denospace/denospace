@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import { denoteNameFromFrontMatter } from "./denote.ts";
+import { sameKeywords } from "./denote_sequence.ts";
 
 const NAME = "20240125T164237==1a--court-costs__costs.org";
 
@@ -99,9 +100,7 @@ test("a note in a subdirectory is renamed, not relocated", () => {
       "journal/20250820T123820--old-title__journal.org",
       "#+title:      Wednesday 20 August 2025 12:38\n#+filetags:   :journal:\n",
     ),
-  ).toBe(
-    "journal/20250820T123820--wednesday-20-august-2025-1238__journal.org",
-  );
+  ).toBe("journal/20250820T123820--wednesday-20-august-2025-1238__journal.org");
 });
 
 test("a nested folder is preserved whole", () => {
@@ -120,4 +119,33 @@ test("a note already correctly named in a folder is left alone", () => {
       "#+title:      Wednesday 20 August 2025 12:38\n#+filetags:   :journal:\n",
     ),
   ).toBeNull();
+});
+
+// `Denote: Set Keywords` rewrites the note only when the set actually
+// changed. Escaping the prompt returns the keywords it opened with, so
+// without this check the ordinary way out of the prompt would rewrite the
+// front matter, re-save the file and report a rename that did not happen.
+test("An untouched keyword list counts as unchanged", () => {
+  expect(sameKeywords(["costs", "evictions"], ["costs", "evictions"])).toBe(
+    true,
+  );
+});
+
+test("Order and duplicates do not make a keyword list a change", () => {
+  expect(sameKeywords(["evictions", "costs"], ["costs", "evictions"])).toBe(
+    true,
+  );
+  expect(sameKeywords(["costs", "costs"], ["costs"])).toBe(true);
+});
+
+test("An added or removed keyword is a change", () => {
+  expect(sameKeywords(["costs", "liens"], ["costs"])).toBe(false);
+  expect(sameKeywords(["costs"], ["costs", "liens"])).toBe(false);
+});
+
+test("Emptying the list is a change, not an abandoned prompt", () => {
+  // How Denote removes the last keyword: the prompt comes back empty and
+  // what is left behind is what the note gets.
+  expect(sameKeywords([], ["costs"])).toBe(false);
+  expect(sameKeywords([], [])).toBe(true);
 });

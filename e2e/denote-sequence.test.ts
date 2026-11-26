@@ -26,6 +26,39 @@ const JD_TERM = "20250101T100001==21=01--hydroponics__term.org";
 const JD_DIRECT = "20250101T100002==21--civic-design__iteam.org";
 const JD_OTHER = "20250101T100003==22--backyard-shed.org";
 
+/**
+ * Ends the keyword prompt, once the edit just made has actually landed.
+ *
+ * `selected` is how many keywords the note should have once the edit lands.
+ * The reopened box offers each of them back as a removable row, so the count
+ * is a barrier that only the new box can satisfy -- scoped to the rows that
+ * are actually listed, since the filter text hides the rest.
+ *
+ * It then finishes by clicking the prompt's own "Done" row rather than
+ * pressing Escape. The two are the same code path (`promptForKeywords`
+ * returns the selection for either), but Escape proved genuinely unreliable
+ * to drive: the prompt is a loop of separate filter boxes, and a keypress
+ * aimed at the input of a box Preact is in the middle of replacing reaches a
+ * detached node whose handler resolves a promise nothing is waiting on any
+ * more -- so the prompt just stays open. Three successively stricter barriers
+ * (the help text, then the removable-row count, then an empty filter) each
+ * still lost roughly one of these three tests per run, a different one each
+ * time; the last failure had the reopened box settled, focused and empty in
+ * the snapshot, and Escape still did not close it. A click re-resolves the
+ * locator and waits for the element to be stable before dispatching, which is
+ * exactly the guarantee a keypress does not give.
+ */
+async function finishKeywordPrompt(page: any, selected: number) {
+  await expect(
+    page.locator(".sb-result-list .sb-name", { hasText: /\u2715/ }),
+  ).toHaveCount(selected, { timeout: 15_000 });
+  // The row carries the click handler; the name span inside it is a child.
+  await page
+    .locator(".sb-result-list .sb-option", { hasText: /Done/ })
+    .first()
+    .click();
+}
+
 async function runCommand(page: any, name: string) {
   await page.evaluate((command: string) => {
     void (globalThis as any).sbRuntime.evalLuaScript(
@@ -195,7 +228,7 @@ test.describe("Signatures as a sequence", () => {
     expect(text).toContain("#+signature:  21=05");
   });
 
-  test("Add Keywords takes a keyword the library has never used", async ({
+  test("Set Keywords takes a keyword the library has never used", async ({
     sbPage,
     sbServer,
   }) => {
@@ -204,7 +237,7 @@ test.describe("Signatures as a sequence", () => {
     // unaccepted, which is how this went wrong.
     await gotoSilverBulletPage(sbPage, sbServer, JD_DIRECT);
     await showMetadata(sbPage);
-    await runCommand(sbPage, "Denote: Add Keywords");
+    await runCommand(sbPage, "Denote: Set Keywords");
     const filter = sbPage
       .locator(".sb-modal-box input, .sb-modal input")
       .first();
@@ -214,16 +247,9 @@ test.describe("Signatures as a sequence", () => {
       sbPage.locator(".sb-result-list .sb-name").first(),
     ).toContainText("guitar", { timeout: 10_000 });
     await filter.press("Enter");
-    // Wait for the prompt to come back round with the keyword taken, or the
-    // Escape below lands on the editor and leaves the prompt open.
-    await expect(sbPage.locator(".sb-help-text")).toContainText(
-      "Selected: guitar",
-      { timeout: 10_000 },
-    );
-    await sbPage
-      .locator(".sb-modal-box input, .sb-modal input")
-      .first()
-      .press("Escape");
+    // The note's own `iteam` is already selected, this being a prefilled
+    // prompt, so `guitar` joins it rather than replacing it.
+    await finishKeywordPrompt(sbPage, 2);
     await expect(currentPage(sbPage)).toHaveValue(
       "20250101T100002==21--civic-design__guitar_iteam.org",
       { timeout: 45_000 },
@@ -231,7 +257,7 @@ test.describe("Signatures as a sequence", () => {
     await expect(sbPage.locator(".sb-notification-error")).toHaveCount(0);
   });
 
-  test("Add Keywords renames without complaining that the old name is gone", async ({
+  test("Set Keywords renames without complaining that the old name is gone", async ({
     sbPage,
     sbServer,
   }) => {
@@ -241,7 +267,7 @@ test.describe("Signatures as a sequence", () => {
     // one.
     await gotoSilverBulletPage(sbPage, sbServer, JD_TERM);
     await showMetadata(sbPage);
-    await runCommand(sbPage, "Denote: Add Keywords");
+    await runCommand(sbPage, "Denote: Set Keywords");
     const filter = sbPage
       .locator(".sb-modal-box input, .sb-modal input")
       .first();
@@ -251,11 +277,7 @@ test.describe("Signatures as a sequence", () => {
       sbPage.locator(".sb-result-list .sb-name").first(),
     ).toContainText("iteam", { timeout: 10_000 });
     await filter.press("Enter");
-    // Escape ends the keyword prompt, as it does in Denote.
-    await sbPage
-      .locator(".sb-modal-box input, .sb-modal input")
-      .first()
-      .press("Escape");
+    await finishKeywordPrompt(sbPage, 2);
     // Generous: the rename goes through a save, an index pass and a
     // navigation, and the suite runs these in parallel.
     await expect(currentPage(sbPage)).toHaveValue(
@@ -265,23 +287,40 @@ test.describe("Signatures as a sequence", () => {
     await expect(sbPage.locator(".sb-notification-error")).toHaveCount(0);
   });
 
-  test("Remove Keywords drops one and renames", async ({
-    sbPage,
-    sbServer,
-  }) => {
+  test("Set Keywords drops one and renames", async ({ sbPage, sbServer }) => {
+    // Removing is now the same prompt as adding: the note's own keywords are
+    // offered back, and picking one takes it off. `denote-rename-file-keywords`
+    // is one command for both, and this is what that costs at the UI.
     await gotoSilverBulletPage(sbPage, sbServer, WAIVERS);
-    await runCommand(sbPage, "Denote: Remove Keywords");
+    await runCommand(sbPage, "Denote: Set Keywords");
     const filter = sbPage
       .locator(".sb-modal-box input, .sb-modal input")
       .first();
     await expect(filter).toBeVisible({ timeout: 20_000 });
+    // `costs` and `waivers` are both on the note, so both are removable rows.
     await filter.fill("waivers");
+    await expect(
+      sbPage.locator(".sb-result-list .sb-name").first(),
+    ).toContainText("waivers", { timeout: 10_000 });
     await filter.press("Enter");
+    // Only `costs` is left on the note, so only it is still offered back.
+    await finishKeywordPrompt(sbPage, 1);
     await expect(currentPage(sbPage)).toHaveValue(
       "20240126T082320==1b--waivers-of-filing-fees__costs.org",
       { timeout: 45_000 },
     );
+    await expect(sbPage.locator(".sb-notification-error")).toHaveCount(0);
   });
+
+  // Escaping a prefilled prompt returns the keywords it opened with, so the
+  // ordinary way out reaches the rewrite with an unchanged set. There is no
+  // test for that here on purpose: the file is byte-identical either way
+  // (rewriting front matter to what it already said is a no-op), so the only
+  // difference the `sameKeywords` guard makes is the "Updated" toast it stops
+  // -- and an assertion that a toast never appears is satisfied by one that
+  // has merely not appeared yet, which passes whether the guard is there or
+  // not. `sameKeywords` is covered in denote_rename.test.ts instead, where
+  // reverting it does fail the suite.
 });
 
 test.describe("Generated pages under denote/", () => {

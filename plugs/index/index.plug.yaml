@@ -249,30 +249,42 @@ functions:
     path: ./denote_sequence.ts:signaturePreviousCommand
     command:
       name: "Denote: Signature Previous"
+  # Each of these derives its answer from the note in front of you and then
+  # writes: a new file, or a rename plus rewritten front matter. They have no
+  # business being offered in a read-only space, or with no page open.
   denoteNewChildNote:
     path: ./denote_sequence.ts:newChildNoteCommand
     command:
       name: "Denote: New Child Note"
+      requireMode: rw
+      requireEditor: page
   denoteNewSiblingNote:
     path: ./denote_sequence.ts:newSiblingNoteCommand
     command:
       name: "Denote: New Sibling Note"
+      requireMode: rw
+      requireEditor: page
   denoteRenameNote:
     path: ./denote_sequence.ts:renameNoteCommand
     command:
       name: "Denote: Rename"
+      requireMode: rw
+      requireEditor: page
   denoteSetSignature:
     path: ./denote_sequence.ts:setSignatureCommand
     command:
       name: "Denote: Set Signature"
-  denoteAddKeywords:
-    path: ./denote_sequence.ts:addKeywordsCommand
+      requireMode: rw
+      requireEditor: page
+  # `denote-rename-file-keywords`: one command, prefilled, adding and removing.
+  # Denote's `-add-keywords` / `-remove-keywords` pair is for files marked in
+  # Dired, not for the file you are looking at.
+  denoteKeywords:
+    path: ./denote_sequence.ts:keywordsCommand
     command:
-      name: "Denote: Add Keywords"
-  denoteRemoveKeywords:
-    path: ./denote_sequence.ts:removeKeywordsCommand
-    command:
-      name: "Denote: Remove Keywords"
+      name: "Denote: Set Keywords"
+      requireMode: rw
+      requireEditor: page
   # Generated pages under `denote/` (signatures, keywords, calendar, health)
   # and the pickers of denote-find-link / denote-find-backlink.
   denoteGenerateView:
@@ -295,6 +307,8 @@ functions:
     path: ./denote_views.ts:journalOpenDateCommand
     command:
       name: "Journal: Open Date"
+      # Open *or create*, so it writes the entry when the date has none.
+      requireMode: rw
   denoteLibraryHealth:
     path: ./denote_views.ts:libraryHealthCommand
     command:

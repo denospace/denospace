@@ -22,9 +22,9 @@ import {
   signatureParent,
   sluggify,
 } from "@silverbulletmd/silverbullet/lib/denote";
+import { pathFromPageName } from "@silverbulletmd/silverbullet/lib/ref";
 import { editor, space } from "@silverbulletmd/silverbullet/syscalls";
 import type { FilterOption } from "@silverbulletmd/silverbullet/type/client";
-import { pathFromPageName } from "@silverbulletmd/silverbullet/lib/ref";
 import {
   createDenoteNote,
   type DenoteNoteSummary,
@@ -338,29 +338,28 @@ export async function setSignatureCommand(): Promise<void> {
   await rewriteAndRename({ signature: signature.trim() });
 }
 
-/** `denote-keywords-add`: pick keywords to add to the open note. */
-export async function addKeywordsCommand(): Promise<void> {
-  const page = await editor.getCurrentPage();
-  const parsed = parseDenoteName(page);
-  if (!parsed?.identifier) {
-    await editor.flashNotification("Not a Denote note", "error");
-    return;
-  }
-  const chosen = await promptForKeywords();
-  if (!chosen?.length) return;
-  const text = await editor.getText();
-  const fm = parseDenoteFrontMatter(
-    text,
-    denoteFileType(parsed.extension, text),
+/** The same set, order and duplicates aside: whether an edit changed anything. */
+export function sameKeywords(a: string[], b: string[]): boolean {
+  const left = [...new Set(a)].sort();
+  const right = [...new Set(b)].sort();
+  return (
+    left.length === right.length &&
+    left.every((keyword, i) => keyword === right[i])
   );
-  const current = fm.hasKeywords ? fm.keywords : parsed.keywords;
-  await rewriteAndRename({
-    keywords: [...new Set([...current, ...chosen])].sort(),
-  });
 }
 
-/** `denote-keywords-remove`: pick one of the open note's keywords to drop. */
-export async function removeKeywordsCommand(): Promise<void> {
+/**
+ * `denote-rename-file-keywords`: the note's keywords, prefilled, so the one
+ * prompt both adds and removes.
+ *
+ * Denote has no separate add and remove commands for a single file -- its
+ * pair of those operate on files marked in Dired. For the file in front of
+ * you there is one command, prepopulating the prompt with the keywords the
+ * note carries, and what you leave behind is what it gets. Two commands here
+ * meant choosing between them before knowing whether the edit was an addition
+ * or a removal, and neither could do both at once.
+ */
+export async function keywordsCommand(): Promise<void> {
   const page = await editor.getCurrentPage();
   const parsed = parseDenoteName(page);
   if (!parsed?.identifier) {
@@ -373,17 +372,12 @@ export async function removeKeywordsCommand(): Promise<void> {
     denoteFileType(parsed.extension, text),
   );
   const current = fm.hasKeywords ? fm.keywords : parsed.keywords;
-  if (!current.length) {
-    await editor.flashNotification("This note has no keywords", "error");
-    return;
-  }
-  const choice = await editor.filterBox(
-    "Remove",
-    current.map((k) => ({ name: k })),
-    "Which keyword to remove",
-  );
-  if (!choice) return;
-  await rewriteAndRename({
-    keywords: current.filter((k) => k !== choice.name),
-  });
+  const chosen = await promptForKeywords(current);
+  if (chosen === undefined) return;
+  // Escaping the prompt returns what it opened with, so an untouched list is
+  // the ordinary way out and must not rewrite the note or claim it renamed
+  // anything. An *emptied* list is a real change: that is how Denote removes
+  // the last keyword.
+  if (sameKeywords(chosen, current)) return;
+  await rewriteAndRename({ keywords: chosen });
 }

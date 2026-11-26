@@ -1,26 +1,36 @@
 import {
+  compileDblockRegexp,
+  type DblockParams,
+  type DenoteFileType,
   denoteAttachmentName,
   denoteDate,
   denoteExtension,
   denoteFileType,
-  type DenoteFileType,
   denoteIdentifier,
   denoteIdentifierDate,
   denoteLinkDescription,
+  formatDenoteFrontMatter,
+  formatDenoteName,
   isDenoteNoteFile,
   isJournalEntryName,
   journalDateStamp,
   journalTitle,
-  parseLocalDate,
-  compileDblockRegexp,
-  type DblockParams,
   parseDblockParams,
-  formatDenoteFrontMatter,
-  formatDenoteName,
   parseDenoteFrontMatter,
   parseDenoteName,
+  parseLocalDate,
   sluggify,
 } from "@silverbulletmd/silverbullet/lib/denote";
+import {
+  hasLinkScheme,
+  innerPageLink,
+  type LinkSyntax,
+  linkFor,
+  linkSyntaxFor,
+  pageLink,
+  urlLink,
+} from "@silverbulletmd/silverbullet/lib/link_syntax";
+import { pathFromPageName } from "@silverbulletmd/silverbullet/lib/ref";
 import {
   addParentPointers,
   collectNodesOfType,
@@ -43,21 +53,11 @@ import type {
   ObjectValue,
   PageMeta,
 } from "@silverbulletmd/silverbullet/type/index";
-import {
-  hasLinkScheme,
-  innerPageLink,
-  type LinkSyntax,
-  linkSyntaxFor,
-  pageLink,
-  urlLink,
-  linkFor,
-} from "@silverbulletmd/silverbullet/lib/link_syntax";
-import { insertUrlLink } from "./web_link.ts";
-import { pathFromPageName } from "@silverbulletmd/silverbullet/lib/ref";
 import type { FrontMatter } from "./frontmatter.ts";
 import { batchRenameFiles } from "./refactor.ts";
 import type { RelationObject } from "./relation.ts";
 import { buildLineIndex, extractSnippet, orgLinkContext } from "./snippet.ts";
+import { insertUrlLink } from "./web_link.ts";
 import { pickEntry } from "./zotero.ts";
 
 export type DenoteObject = ObjectValue<{
@@ -420,6 +420,11 @@ export async function denoteKeywordCounts(): Promise<[string, number][]> {
 
 const doneOption = "\u2713  Done";
 const newKeywordOption = "\uFF0B  New keyword\u2026";
+/**
+ * Marks a keyword the note already carries. Keywords are sluggified, so one
+ * can never contain this prefix itself and be mistaken for a row of its own.
+ */
+const removePrefix = "\u2715  ";
 
 /**
  * Denote's keyword prompt with completion over the library's existing
@@ -431,11 +436,21 @@ const newKeywordOption = "\uFF0B  New keyword\u2026";
  * library's keyword vocabulary consistent is most of the point of completing
  * them at all.
  *
- * @returns the chosen keywords, or undefined if the prompt was abandoned
+ * `initial` is the set the prompt opens with, which is what lets one command
+ * both add and remove: `denote-rename-file-keywords` prepopulates the
+ * minibuffer with the note's own keywords and rewrites whatever is left
+ * behind, so dropping one is editing the list rather than a second command.
+ * Those rows are offered back marked with a cross, and picking one takes it
+ * off.
+ *
+ * @returns the chosen keywords — on Escape, whatever is selected so far,
+ *          which for a prefilled prompt leaves the note as it was
  */
-export async function promptForKeywords(): Promise<string[] | undefined> {
+export async function promptForKeywords(
+  initial: string[] = [],
+): Promise<string[] | undefined> {
   const counts = await denoteKeywordCounts();
-  const selected: string[] = [];
+  const selected: string[] = [...new Set(initial)];
   for (;;) {
     const options: FilterOption[] = [
       {
@@ -450,6 +465,12 @@ export async function promptForKeywords(): Promise<string[] | undefined> {
         description: "several at once, comma separated",
         orderId: -1,
       },
+      // Already on the note, so the useful thing to offer is taking it off.
+      ...selected.map((keyword) => ({
+        name: `${removePrefix}${keyword}`,
+        description: "on this note — remove",
+        orderId: 0,
+      })),
       ...counts
         .filter(([keyword]) => !selected.includes(keyword))
         .map(([keyword, count]) => ({
@@ -486,7 +507,17 @@ export async function promptForKeywords(): Promise<string[] | undefined> {
       }
       continue;
     }
-    selected.push(choice.name);
+    if (choice.name.startsWith(removePrefix)) {
+      const dropped = choice.name.slice(removePrefix.length);
+      const at = selected.indexOf(dropped);
+      if (at !== -1) selected.splice(at, 1);
+      continue;
+    }
+    // The filter box returns what was typed when nothing matched, so a
+    // keyword still needs sluggifying here -- the rows above are already
+    // slugs, and re-slugging one is a no-op.
+    const typed = sluggify("keyword", choice.name.trim());
+    if (typed && !selected.includes(typed)) selected.push(typed);
   }
 }
 

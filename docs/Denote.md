@@ -96,8 +96,9 @@ no Denote equivalent: the bare name resolves to nothing, and following it would
 make a note outside the naming scheme.
 
 The row sorts below every real match and is never the default selection, since
-Denote's own prompt creates on *no* match. **Denote: Link or Create** does the
-same thing from the command palette, picking from the library first.
+Denote's own prompt creates on *no* match. **Denote: Insert or Edit Link**
+(`Alt-i`) does the same thing from the command palette, picking from the
+library first.
 
 A bare `[[Notebook]]` in an Org note — one written by hand, with no `denote:`
 identifier — resolves to `Notebook.org`, and creates it as an Org file if there
@@ -221,8 +222,7 @@ never changes, so nothing that points at the note breaks.
 | Command | Emacs |
 |---|---|
 | `Denote: Rename` — title, keywords and signature, each defaulting to what the note has | `denote-rename-file` |
-| `Denote: Add Keywords` — pick from the library's keywords, or type new ones | `denote-keywords-add` |
-| `Denote: Remove Keywords` — pick one of the note's own | `denote-keywords-remove` |
+| `Denote: Set Keywords` — the note's own keywords, prefilled; add by picking or typing, remove by picking one back off | `denote-rename-file-keywords` |
 | `Denote: Set Signature` | `denote-rename-file-signature` |
 
 # Generated pages
@@ -288,10 +288,14 @@ The commands a Denote user reaches for constantly, and typically binds to a
 single key. Open-or-create, link-or-create and backlinks are built; see the
 sections above.
 
-* **Search the library** (`denote-grep`, `consult-denote-grep`) — full-text
-  search scoped to the Denote directory. SilverBullet has no full-text search
-  of its own, so this is a view to build rather than one to reach: the
-  substrate is there, since every paragraph is already indexed.
+* **Search the library** (`denote-grep`, `consult-denote-grep`) — built, as
+  `Navigate: Search Notes` on `Alt-/`; see [[Library/Std/Pages/Search Notes]].
+  Matching lines from the whole library, narrowing as you type, landing on the
+  line itself. What is *not* built is the refinement Denote's query buffer
+  offers on top of a search — `denote-query-focus-last-search`,
+  `-exclude-files`, `-only-include-files`, the keyword variants of those, and
+  `-query-sort-last-search`. Those narrow a result set that already exists,
+  which this view cannot do: each keystroke re-runs the query from scratch.
 
 ## 2. Keyword-centric browsing
 Denote deliberately has no folders: keywords *are* the organisation, so
@@ -309,7 +313,7 @@ open:
 Renaming is routine in Denote, because the title and keywords live *in* the
 file name. These keep a library consistent.
 
-* `denote-rename-file`, `denote-keywords-add`/`-remove` and the signature
+* `denote-rename-file`, `denote-rename-file-keywords` and the signature
   variant are built — see [[#Renaming in place]]. `denote-rename-file-date`
   is not: an identifier is identity.
 * **Change file type** (`denote-change-file-type-and-front-matter`) — convert a

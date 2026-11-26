@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { expect, test } from "vitest";
 import YAML from "js-yaml";
+import { expect, test } from "vitest";
 
 // The command palette is the product's surface: it is how nearly everything
 // is reached, and two commands doing one thing is a question the user has to
@@ -9,7 +9,12 @@ import YAML from "js-yaml";
 
 const plugsDir = new URL("./", import.meta.url).pathname;
 
-type Command = { name: string; plug: string };
+type Command = {
+  name: string;
+  plug: string;
+  requireMode?: string;
+  requireEditor?: string;
+};
 
 function commands(): Command[] {
   const found: Command[] = [];
@@ -22,7 +27,12 @@ function commands(): Command[] {
       const manifest = YAML.load(readFileSync(join(dir, file), "utf8")) as any;
       for (const fn of Object.values(manifest?.functions ?? {}) as any[]) {
         if (fn?.command?.name) {
-          found.push({ name: fn.command.name, plug: entry });
+          found.push({
+            name: fn.command.name,
+            plug: entry,
+            requireMode: fn.command.requireMode,
+            requireEditor: fn.command.requireEditor,
+          });
         }
       }
     }
@@ -101,4 +111,53 @@ test("the journal has one command per action", () => {
       .filter((n) => /journal/i.test(n))
       .sort(),
   ).toEqual(["Journal: Calendar", "Journal: Open Date"]);
+});
+
+test("keywords are one command, not an add and a remove", () => {
+  // Denote has no single-file add/remove pair: `-add-keywords` and
+  // `-remove-keywords` operate on files marked in Dired. For the file in
+  // front of you there is `denote-rename-file-keywords`, prefilled with the
+  // note's own keywords, and what you leave behind is what it gets. Two
+  // commands meant picking one before knowing whether the edit was an
+  // addition or a removal, and neither could do both at once.
+  // `Denote: Keywords Page` is excluded on purpose: it opens the generated
+  // index of the library's keywords and edits nothing.
+  expect(
+    all
+      .map((c) => c.name)
+      .filter((n) => /keyword/i.test(n) && n !== "Denote: Keywords Page")
+      .sort(),
+  ).toEqual(["Denote: Set Keywords"]);
+});
+
+test("a command that writes says so", () => {
+  // Offered in a read-only space, each of these fails at the point it tries
+  // to write -- after the prompts, which is the worst place to find out.
+  // `requireEditor: page` matters too: all of them read the note in front of
+  // you to decide what to do. Listed rather than inferred, because what a
+  // command writes is not visible from its manifest entry; the list is the
+  // claim, and the assertion holds it to it.
+  const writes = [
+    "Denote: New Child Note",
+    "Denote: New Sibling Note",
+    "Denote: Rename",
+    "Denote: Rename File from Front Matter",
+    "Denote: Set Keywords",
+    "Denote: Set Signature",
+  ];
+  for (const name of writes) {
+    const command = all.find((c) => c.name === name);
+    expect(command, `${name} is missing from the manifests`).toBeDefined();
+    expect(
+      command!.requireMode,
+      `${name} writes but is offered read-only`,
+    ).toBe("rw");
+    expect(command!.requireEditor, `${name} needs the note it acts on`).toBe(
+      "page",
+    );
+  }
+  // Writes a journal entry for a date that has none, but prompts for the
+  // date rather than reading the open page.
+  const openDate = all.find((c) => c.name === "Journal: Open Date");
+  expect(openDate?.requireMode).toBe("rw");
 });

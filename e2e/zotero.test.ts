@@ -686,7 +686,7 @@ test.describe("Zotero: keywords and tags in step", () => {
       "20261004T100000--paper__bib_landbank_rtk.org",
       { timeout: 30_000 },
     );
-    // Add one, the way `Denote: Add Keywords` does.
+    // Add one, the way `Denote: Set Keywords` does.
     await sbPage.evaluate(() =>
       (globalThis as any).sbRuntime.evalLuaScript(`
         local text = editor.getText()
@@ -1222,7 +1222,7 @@ test.describe("Zotero: keywords on a note SilverBullet made", () => {
       "paper2026",
       { timeout: 20_000 },
     );
-    // Add two keywords, the way `Denote: Add Keywords` does.
+    // Add two keywords, the way `Denote: Set Keywords` does.
     await sbPage.evaluate(() =>
       (globalThis as any).sbRuntime.evalLuaScript(`
         local text = editor.getText()
