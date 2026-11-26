@@ -42,7 +42,7 @@ test.describe("Journal Today", () => {
     const today = (page: any) =>
       page.evaluate(() => {
         void (globalThis as any).sbRuntime.evalLuaScript(
-          `editor.invokeCommand("Denote: Journal Today")`,
+          `editor.invokeCommand("Journal: Today")`,
         );
       });
 
@@ -95,7 +95,7 @@ test.describe("Journal Today", () => {
 
       await sbPage.evaluate(() => {
         void (globalThis as any).sbRuntime.evalLuaScript(
-          `editor.invokeCommand("Denote: Journal Today")`,
+          `editor.invokeCommand("Journal: Today")`,
         );
       });
       // It opens what the server has rather than writing a second entry.
@@ -130,7 +130,7 @@ test.describe("Journal Today", () => {
 
     await sbPage.evaluate(() => {
       void (globalThis as any).sbRuntime.evalLuaScript(
-        `editor.invokeCommand("Denote: Journal Today")`,
+        `editor.invokeCommand("Journal: Today")`,
       );
     });
     // It opens the entry that is there rather than writing a second one.

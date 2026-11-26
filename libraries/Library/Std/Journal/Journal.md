@@ -81,28 +81,18 @@ function journal.entries()
   return system.invokeFunction("index.denoteJournalEntries")
 end
 
--- Entries are newest-first, so "previous" is the next one along and "next" is
--- the one before. Reading something that is not an entry, "previous" means the
--- latest entry -- the same place `Journal: Today` would leave you on a day you
--- have not written yet.
-function journal.neighbor(direction)
-  local entries = journal.entries()
-  if #entries == 0 then return nil end
-  local currentPage = editor.getCurrentPage()
-  local index = nil
-  for i, e in ipairs(entries) do
-    if e.name == currentPage then
-      index = i
-      break
-    end
-  end
-  if index == nil then
-    return direction == "previous" and entries[1] or nil
-  end
-  if direction == "previous" then
-    return entries[index + 1]
-  end
-  return entries[index - 1]
+-- Previous and next are the plug's to work out, not this page's. Entries are
+-- newest-first, so "previous" is the next one along and "next" is the one
+-- before, and reading something that is not an entry "previous" means the
+-- latest entry -- rules that were written out twice, here in Lua and again in
+-- `denoteJournalNeighbor`, and would have to agree forever. They navigate and
+-- report for themselves.
+function journal.previous()
+  system.invokeFunction("index.denoteJournalPrevious")
+end
+
+function journal.next()
+  system.invokeFunction("index.denoteJournalNext")
 end
 ```
 
@@ -114,6 +104,9 @@ if config.get("journal.enabled", true) then
   command.update {
     name = "Journal: Today",
     key = "Ctrl-q j",
+    -- It writes the day's entry when there is not one yet, so it has no
+    -- business being offered in a read-only space.
+    requireMode = "rw",
     run = function()
       journal.openOrCreate(date.today())
     end,
@@ -121,26 +114,12 @@ if config.get("journal.enabled", true) then
   command.update {
     name = "Journal: Previous Day",
     key = "Ctrl-q p",
-    run = function()
-      local entry = journal.neighbor("previous")
-      if entry then
-        editor.navigate(entry.name)
-      else
-        editor.flashNotification("No earlier journal entries")
-      end
-    end,
+    run = journal.previous,
   }
   command.update {
     name = "Journal: Next Day",
     key = "Ctrl-q n",
-    run = function()
-      local entry = journal.neighbor("next")
-      if entry then
-        editor.navigate(entry.name)
-      else
-        editor.flashNotification("No later journal entries")
-      end
-    end,
+    run = journal.next,
   }
   -- Journals are dated paths ("Journal/2026/08/07"), so a tree is the shape
   -- they already have: a year is a folder, a month is a folder, and reaching

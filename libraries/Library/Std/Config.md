@@ -528,7 +528,7 @@ config.set("actionButtons", {
   {
     icon = "calendar",
     description = "Today's journal",
-    command = "Denote: Journal Today",
+    command = "Journal: Today",
     priority = 4,
     dropdown = false,
   },

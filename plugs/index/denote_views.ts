@@ -216,12 +216,12 @@ async function renderCalendar(yearStr?: string): Promise<string> {
   return out.join("\n");
 }
 
-/** `Denote: Journal Calendar`: this year's calendar. */
+/** `Journal: Calendar`: this year's calendar. */
 export async function journalCalendarCommand(): Promise<void> {
   await editor.navigate({ path: `${prefix}calendar.org` } as any);
 }
 
-/** `Denote: Journal Open Date`: an entry for a date typed in. */
+/** `Journal: Open Date`: an entry for a date typed in. */
 export async function journalOpenDateCommand(): Promise<void> {
   const today = journalDateStamp(new Date());
   const iso = `${today.slice(0, 4)}-${today.slice(4, 6)}-${today.slice(6, 8)}`;

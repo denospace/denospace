@@ -240,8 +240,8 @@ Reopen to refresh.
 | `denote/calendar`, `denote/calendar/2024` | A year of the journal — see [[#Journal calendar]] | `denote-journal-calendar` |
 | `denote/health` | Identifiers shared by two files, links to identifiers no note carries, file names out of step with their front matter | `denote-explore` |
 
-`Denote: Signatures Page`, `Denote: Keywords Page`, `Denote: Journal
-Calendar` and `Denote: Library Health` open them from the palette.
+`Denote: Signatures Page`, `Denote: Keywords Page`, `Journal: Calendar`
+and `Denote: Library Health` open them from the palette.
 
 Three pickers round this out: `Denote: Find Link` (the notes this one links
 to — `denote-find-link`), `Denote: Find Backlink` (the notes linking here —
@@ -257,7 +257,7 @@ fact. The entry is stamped with the day it is for, not the day it was made,
 so the calendar finds it again.
 
 `journal:` links work in any note, not only the calendar: `[[journal:2025-08-20][that
-Wednesday]]` opens or creates the entry. `Denote: Journal Open Date` does the
+Wednesday]]` opens or creates the entry. `Journal: Open Date` does the
 same from a prompt.
 
 # Images and files

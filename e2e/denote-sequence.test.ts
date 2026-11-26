@@ -381,7 +381,7 @@ test.describe("Generated pages under denote/", () => {
     sbServer,
   }) => {
     await gotoSilverBulletPage(sbPage, sbServer, "index");
-    await runCommand(sbPage, "Denote: Journal Open Date");
+    await runCommand(sbPage, "Journal: Open Date");
     await answer(sbPage, "2025-03-04");
     await expect(currentPage(sbPage)).toHaveValue(
       /^journal\/20250304T000000--tuesday-4-march-2025.*__journal\.org$/,

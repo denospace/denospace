@@ -414,9 +414,8 @@ export class MainUI {
       });
     const journalNav = onJournalEntry
       ? {
-          previous: () =>
-            this.client.runCommandByName("Denote: Journal Previous"),
-          next: () => this.client.runCommandByName("Denote: Journal Next"),
+          previous: () => this.client.runCommandByName("Journal: Previous Day"),
+          next: () => this.client.runCommandByName("Journal: Next Day"),
         }
       : undefined;
 

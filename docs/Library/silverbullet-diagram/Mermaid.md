@@ -25,7 +25,7 @@ C -->|Two| E[Result 2]
 # Installation
 This is a SilverBullet library (hence the `meta/library` tag). It's a single page — there is no release or asset to fetch. Install it through SilverBullet's built-in **Library Manager**:
 
-1. Run the **`Library: Install`** command (or open the **Libraries** manager via the app menu / **`Libraries: Manager`** command and click **Install**).
+1. Run the **`Library: Install`** command (or open the **Libraries** manager via the app menu / **`Library: Manager`** command and click **Install**).
 2. When prompted for a library URI, paste: `github:silverbulletmd/silverbullet-diagram/Mermaid.md`
 
 If you need offline / CDN-free rendering, run the `Mermaid: Download bundle for offline use` command: it downloads the esm.sh bundle into your space, after which it’s used automatically.

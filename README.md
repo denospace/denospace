@@ -82,7 +82,7 @@ everywhere.
 | `Denote: Find Link` / `Find Backlink` | `denote-find-link` / `denote-find-backlink` |
 | `Denote: Random Note` | `denote-explore-random-note` |
 | `Denote: Signatures Page`, `Keywords Page`, `Library Health` | `denote-sequence-dired`, `denote-explore-*` |
-| `Denote: Journal Calendar` / `Journal Open Date` | `denote-journal-calendar` |
+| `Journal: Calendar` / `Journal: Open Date` | `denote-journal-calendar` |
 | `Denote: Update Dynamic Blocks` | `org-update-all-dblocks` |
 | `Denote: Insert Links Block` and three siblings | `denote-org-extras-dblock-insert-*` |
 
@@ -432,12 +432,12 @@ and is titled with the date. Which day an entry belongs to is decided by its
 matches on. An entry written up after the fact is stamped with the day it is
 for, so the day finds it again.
 
-**`Denote: Journal Calendar`** opens `denote/calendar`, a year of the journal
+**`Journal: Calendar`** opens `denote/calendar`, a year of the journal
 laid out month by month. A day with an entry links to it; a day without is a
 faint `journal:YYYY-MM-DD` link that creates the entry when followed — the
 same gesture as picking a date in Emacs's calendar, and the usual way to fill
-in a past day. `journal:` links work in any note, and `Denote: Journal Open
-Date` takes a date from a prompt.
+in a past day. `journal:` links work in any note, and `Journal: Open Date`
+takes a date from a prompt.
 
 | Key | Default | Mirrors |
 |---|---|---|
@@ -527,7 +527,7 @@ symbol you expect. If it is there, the deploy worked and the browser is stale.
 
 ### One journal entry per day
 
-`Denote: Journal Today` opens today's entry and makes one only if there is
+`Journal: Today` opens today's entry and makes one only if there is
 none, and it answers that question from the **file list** rather than the
 object index. The index is a cache that lags — it is still being built on a
 cold start, and it does not yet hold an entry another device wrote and synced

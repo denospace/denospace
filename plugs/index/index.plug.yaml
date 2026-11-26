@@ -211,19 +211,18 @@ functions:
     path: ./denote.ts:denoteJournalOpenOrCreate
   denoteJournalEntries:
     path: ./denote.ts:denoteJournalEntries
+  # No `command:` on these three. The `Journal:` commands in Library/Std are
+  # the ones a user sees, and they call straight through to here -- giving
+  # them a command each as well put two of every journal command in the
+  # palette (`Journal: Next Day` and `Denote: Journal Next` doing the one
+  # thing) and left the key bindings and the `journal.enabled` switch on only
+  # one of the pair.
   denoteJournalToday:
     path: ./denote.ts:denoteJournalTodayCommand
-    command:
-      name: "Denote: Journal Today"
-      requireMode: rw
   denoteJournalPrevious:
     path: ./denote.ts:denoteJournalPreviousCommand
-    command:
-      name: "Denote: Journal Previous"
   denoteJournalNext:
     path: ./denote.ts:denoteJournalNextCommand
-    command:
-      name: "Denote: Journal Next"
   # Signatures as sequences (denote-sequence), and renaming in place
   # (denote-rename-file, denote-keywords-add/remove).
   denoteBrowseBySignature:
@@ -291,11 +290,11 @@ functions:
   denoteJournalCalendar:
     path: ./denote_views.ts:journalCalendarCommand
     command:
-      name: "Denote: Journal Calendar"
+      name: "Journal: Calendar"
   denoteJournalOpenDate:
     path: ./denote_views.ts:journalOpenDateCommand
     command:
-      name: "Denote: Journal Open Date"
+      name: "Journal: Open Date"
   denoteLibraryHealth:
     path: ./denote_views.ts:libraryHealthCommand
     command:

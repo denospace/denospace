@@ -83,11 +83,11 @@ export async function openLibraries() {
   await openPanel("libraries");
 }
 
-// Legacy slash-command aliases — each opens the Libraries tab with a specific
-// focus hint so the UI can auto-trigger the matching action/form.
-export async function openLibrariesLegacyManager() {
-  await openPanel("libraries", "manager");
-}
+// Each of these opens the Libraries tab with a focus hint, which the tab
+// dispatches on to run the matching action or pop the matching form -- so
+// `Library: Install` lands on the install prompt rather than making the user
+// find it. There is no command for the "manager" hint: it is what the tab
+// does with no hint at all, so `Library: Manager` covered it twice.
 export async function openLibrariesInstall() {
   await openPanel("libraries", "install");
 }

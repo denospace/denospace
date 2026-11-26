@@ -33,15 +33,10 @@ functions:
   openLibraries:
     path: ./configuration.ts:openLibraries
     command:
-      name: "Libraries: Manager"
+      name: "Library: Manager"
       requireMode: rw
       menuMac: { location: app, group: "4_prefs", order: 3, label: "Libraries..." }
       menu: { location: file, group: "2_prefs", order: 3, label: "Libraries..." }
-  openLibrariesLegacyManager:
-    path: ./configuration.ts:openLibrariesLegacyManager
-    command:
-      name: "Library: Manager"
-      requireMode: rw
   openLibrariesInstall:
     path: ./configuration.ts:openLibrariesInstall
     command:
