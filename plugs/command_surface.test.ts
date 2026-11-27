@@ -14,8 +14,28 @@ type Command = {
   plug: string;
   requireMode?: string;
   requireEditor?: string;
+  /** `hide: true` keeps a command callable but out of the palette. */
+  hidden?: boolean;
 };
 
+const repoDir = join(plugsDir, "..");
+
+/**
+ * Every command this product registers.
+ *
+ * A command is registered in **four** places, and reading fewer than all of
+ * them undercounts badly enough to make a lock test useless: the plug
+ * manifests here, `command.define`/`command.update` in library Lua,
+ * `view.define`/`navigator.define`'s own `command` key, and client TypeScript
+ * in `client/editor_commands.ts` -- which is where every `Editor:` cursor
+ * command and `Note: Toggle Link Display` live. The namespace list below
+ * covered only the manifests until this read the rest, so `Baked Sections:`
+ * had never been seen by it.
+ *
+ * Only fenced `space-lua` blocks run; a plain ```lua block in the API docs is
+ * an example, and `APIs/Command.md` has several that would otherwise be read
+ * as real commands.
+ */
 function commands(): Command[] {
   const found: Command[] = [];
   for (const entry of readdirSync(plugsDir)) {
@@ -32,19 +52,66 @@ function commands(): Command[] {
             plug: entry,
             requireMode: fn.command.requireMode,
             requireEditor: fn.command.requireEditor,
+            hidden: fn.command.hide === true,
           });
         }
       }
     }
   }
+
+  // Library Lua, inside `space-lua` blocks only.
+  const walk = (dir: string) => {
+    for (const entry of readdirSync(dir)) {
+      const path = join(dir, entry);
+      if (statSync(path).isDirectory()) {
+        walk(path);
+        continue;
+      }
+      if (!path.endsWith(".md")) continue;
+      const text = readFileSync(path, "utf8");
+      for (const block of text.matchAll(/```space-lua\n([\s\S]*?)```/g)) {
+        const lua = block[1];
+        for (const re of [
+          /command\.(?:define|update)\s*\{[^}]*?name\s*=\s*"([^"]+)"/gs,
+          /(?:view|navigator)\.define\s*\{[^}]*?command\s*=\s*"([^"]+)"/gs,
+        ]) {
+          for (const m of lua.matchAll(re)) {
+            found.push({ name: m[1], plug: `library:${entry}` });
+          }
+        }
+      }
+    }
+  };
+  walk(join(repoDir, "libraries"));
+
+  // Client TypeScript.
+  const client = readFileSync(
+    join(repoDir, "client", "editor_commands.ts"),
+    "utf8",
+  );
+  for (const m of client.matchAll(/name:\s*"([A-Z][^"]*:\s[^"]+)"/g)) {
+    found.push({ name: m[1], plug: "client" });
+  }
+
   return found;
 }
 
 const all = commands();
 
-test("the manifests were actually read", () => {
-  // An empty list would make every case below pass.
-  expect(all.length).toBeGreaterThan(100);
+/** The commands actually offered in the palette. */
+const offered = all.filter((c) => !c.hidden);
+
+test("every registration site was actually read", () => {
+  // An empty list would make every case below pass, and reading only the
+  // manifests would miss a third of the surface. The four sites together are
+  // just under 200 commands; the manifests alone are about 120.
+  expect(all.length).toBeGreaterThan(180);
+  for (const site of ["client", "library:Widgets.md"]) {
+    expect(
+      all.some((c) => c.plug === site),
+      `nothing was read from ${site}`,
+    ).toBe(true);
+  }
 });
 
 test("no two commands share a name", () => {
@@ -75,7 +142,14 @@ test("the namespaces are the ones this product means to have", () => {
   // `Denote` is deliberately not here. Every note in this fork is a Denote
   // note, so the prefix named the Emacs package a command came from rather
   // than anything a reader needs; `Note:` says what the command acts on.
+  //
+  // Three of these are one-command namespaces and are candidates for folding
+  // into a neighbour rather than settled choices: `Mention:` (one command,
+  // signing a mention), `Table:` (formatting one) and `Widgets:` (refreshing
+  // them). `Baked Sections:` is two. They are listed because they ship, not
+  // because they have been argued for.
   expect([...new Set(all.map((c) => c.name.split(": ")[0]))].sort()).toEqual([
+    "Baked Sections",
     "Blog",
     "Client",
     "Comment",
@@ -83,23 +157,29 @@ test("the namespaces are the ones this product means to have", () => {
     "Debug",
     "Document",
     "Editor",
+    "Export",
     "Flash",
     "Graph",
     "Image Viewer",
     "Journal",
     "Library",
+    "Mention",
     "Navigate",
     "Note",
     "Outline",
     "Page",
     "Plugs",
+    "Search",
+    "Share",
     "Space",
     "Stats",
     "Sync",
     "System",
+    "Table",
     "Task",
     "Text",
     "Upload",
+    "Widgets",
     "Zotero",
   ]);
 });
@@ -108,13 +188,21 @@ test("the journal has one command per action", () => {
   // The duplication this cleanup was for: `Journal: Next Day` in the library
   // and `Denote: Journal Next` in this manifest ran the same journal, and
   // only the library's had the key binding and the `journal.enabled` switch.
-  // The plug keeps the functions; the library owns the commands.
+  // Six commands, one per action, and no pair doing the same thing: the two
+  // from the plug reach a date, the four from the library walk the days.
   expect(
-    all
+    offered
       .map((c) => c.name)
       .filter((n) => /journal/i.test(n))
       .sort(),
-  ).toEqual(["Journal: Calendar", "Journal: Open Date"]);
+  ).toEqual([
+    "Journal: Calendar",
+    "Journal: Next Day",
+    "Journal: Open Date",
+    "Journal: Picker",
+    "Journal: Previous Day",
+    "Journal: Today",
+  ]);
 });
 
 test("keywords are one command, not an add and a remove", () => {
@@ -125,11 +213,17 @@ test("keywords are one command, not an add and a remove", () => {
   // commands meant picking one before knowing whether the edit was an
   // addition or a removal, and neither could do both at once.
   // `Note: Keywords Page` is excluded on purpose: it opens the generated
-  // index of the library's keywords and edits nothing.
+  // index of the library's keywords and edits nothing. So are the `Search:`
+  // filters, which narrow a search by keyword rather than changing a note's.
   expect(
-    all
+    offered
       .map((c) => c.name)
-      .filter((n) => /keyword/i.test(n) && n !== "Note: Keywords Page")
+      .filter(
+        (n) =>
+          /keyword/i.test(n) &&
+          n !== "Note: Keywords Page" &&
+          !n.startsWith("Search: "),
+      )
       .sort(),
   ).toEqual(["Note: Set Keywords"]);
 });
@@ -200,6 +294,12 @@ test("the path-thinking page commands are not offered", () => {
   //
   // The functions all remain; the top bar still renames a page and a document
   // through `invokeFunction`, by function name rather than command name.
+  // Checked against `offered`, not `all`, because `hide: true` is the other
+  // way to take a command out of the palette -- `Navigate: To Page` uses it.
+  // Deleting the `command:` block was chosen here instead because it also
+  // removes the File menu entry, and `Page: Rename`'s was "Rename Page...";
+  // but a later change that hides rather than deletes is just as correct and
+  // should not fail this.
   for (const name of [
     "Page: Rename",
     "Page: Batch Rename Prefix",
@@ -208,7 +308,7 @@ test("the path-thinking page commands are not offered", () => {
     "Document: Rename Document",
   ]) {
     expect(
-      all.find((c) => c.name === name),
+      offered.find((c) => c.name === name),
       `${name} is back in the palette`,
     ).toBeUndefined();
   }
