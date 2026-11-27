@@ -695,7 +695,7 @@ export function registerEditorCommands(
     },
   });
   hook.registerCommand({
-    name: "Denote: Toggle Link Display",
+    name: "Note: Toggle Link Display",
     requireEditor: "page",
     run: async () => {
       const descriptive = toggleDenoteLinkDisplay(view());

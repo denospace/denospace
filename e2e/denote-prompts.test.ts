@@ -108,7 +108,7 @@ test.describe("Denote's creation variants", () => {
     // link points at, so dating a note backwards is the one way to file it
     // under the day it is about rather than the day it was typed.
     await gotoSilverBulletPage(sbPage, sbServer, "index");
-    await runCommand(sbPage, "Denote: New Note with Date");
+    await runCommand(sbPage, "Note: New with Date");
     await answer(sbPage, "Closing Argument");
     await doneKeywords(sbPage);
     // Appended, so the date is asked last -- as `denote-date` asks it.
@@ -131,7 +131,7 @@ test.describe("Denote's creation variants", () => {
     await gotoSilverBulletPage(sbPage, sbServer, "index");
     // Let the index settle: the rows come from the notes, not the file list.
     await sbPage.waitForTimeout(3000);
-    await runCommand(sbPage, "Denote: New Note in Subdirectory");
+    await runCommand(sbPage, "Note: New in Subdirectory");
     await answer(sbPage, "Site Visit");
     await doneKeywords(sbPage);
 
@@ -169,7 +169,7 @@ test.describe("Denote's creation variants", () => {
     // and it has to change both the extension and the front matter notation.
     await gotoSilverBulletPage(sbPage, sbServer, "index");
     await showMetadata(sbPage);
-    await runCommand(sbPage, "Denote: New Note of Type");
+    await runCommand(sbPage, "Note: New of Type");
     await answer(sbPage, "Mixed Format Note");
     await doneKeywords(sbPage);
     await pick(sbPage, "TOML");
@@ -206,7 +206,7 @@ test.describe("Denote's creation variants", () => {
     // equivalent here already exists as pages tagged `meta/template/page`,
     // so this reads those rather than inventing a second kind of template.
     await gotoSilverBulletPage(sbPage, sbServer, "index");
-    await runCommand(sbPage, "Denote: New Note from Template");
+    await runCommand(sbPage, "Note: New from Template");
     await answer(sbPage, "Fence Line Meeting");
     await doneKeywords(sbPage);
     await pick(sbPage, "Meeting");
@@ -250,7 +250,7 @@ test.describe("Denote's creation variants", () => {
     });
     await sbPage.waitForTimeout(400);
 
-    await runCommand(sbPage, "Denote: New Note from Region");
+    await runCommand(sbPage, "Note: New from Region");
     // No default title: Denote asks outright here, and the first line of a
     // passage makes a poor file name.
     await answer(sbPage, "The Fence Line Is Wrong");
@@ -292,10 +292,10 @@ test.describe("denote.prompts", () => {
   }) => {
     await gotoSilverBulletPage(sbPage, sbServer, "index");
     await sbPage.waitForTimeout(2000);
-    // `Denote: New Note with Signature` appends `signature`, but the list
+    // `Note: New with Signature` appends `signature`, but the list
     // already has it, so it is asked where the configuration put it rather
     // than a second time at the end.
-    await runCommand(sbPage, "Denote: New Note with Signature");
+    await runCommand(sbPage, "Note: New with Signature");
 
     // Keywords come first: the keyword prompt's "Done" row is on screen
     // before any text prompt has been shown.
@@ -354,7 +354,7 @@ test.describe("denote.prompts with a template, and a region", () => {
     });
     await sbPage.waitForTimeout(400);
 
-    await runCommand(sbPage, "Denote: New Note from Region");
+    await runCommand(sbPage, "Note: New from Region");
     await answer(sbPage, "Kept The Selection");
     // No template prompt follows: the next thing that happens is the note.
     await expect(currentPage(sbPage)).toHaveValue(
@@ -371,11 +371,11 @@ test.describe("denote.prompts with a template, and a region", () => {
     sbServer,
   }) => {
     // The guard is about a body that is already there, not about the template
-    // being in the list -- `Denote: New Note` with the same configuration
+    // being in the list -- `Note: New` with the same configuration
     // still gets it.
     await gotoSilverBulletPage(sbPage, sbServer, "index");
     await sbPage.waitForTimeout(2000);
-    await runCommand(sbPage, "Denote: New Note");
+    await runCommand(sbPage, "Note: New");
     await answer(sbPage, "Asked For The Template");
     await pick(sbPage, "Meeting");
     await expect(currentPage(sbPage)).toHaveValue(

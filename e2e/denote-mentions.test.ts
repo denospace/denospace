@@ -54,7 +54,7 @@ test.describe("Linked mentions with context", () => {
     // linked list.
     await sbPage.evaluate(() => {
       void (globalThis as any).sbRuntime.evalLuaScript(
-        `editor.invokeCommand("Denote: Link Mentions")`,
+        `editor.invokeCommand("Note: Link Mentions")`,
       );
     });
     const filter = sbPage

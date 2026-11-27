@@ -227,31 +227,31 @@ test.describe("Renaming a Denote note", () => {
     await showMetadata(sbPage);
     const renamed =
       "20240125T164237==1a--court-costs-renamed__costs_updated.org";
-    // Fire the command without awaiting: it blocks on its own prompt, which
-    // is then filled in like a user would.
-    await sbPage.evaluate(() => {
-      void (globalThis as any).sbRuntime.evalLuaScript(
-        'editor.invokeCommand("Page: Rename")',
-      );
-    });
-    const prompt = sbPage
-      .locator(".sb-modal-box input, .sb-modal input")
-      .first();
-    await expect(prompt).toBeVisible({ timeout: 15_000 });
-    await prompt.fill(renamed);
-    await prompt.press("Enter");
+    // Through the top bar, which is where a raw rename belongs and now the
+    // only way to it: `Page: Rename` prompted for a whole file name, which in
+    // a Denote library is a name you are not meant to type, so it is no
+    // longer offered as a command. The top bar reaches the same function by
+    // name rather than through the palette.
+    const nameEditor = currentPage(sbPage);
+    await nameEditor.click();
+    await nameEditor.fill(renamed);
+    await nameEditor.press("Enter");
+
+    // Waits on the file list, not on the top bar: the top bar holds whatever
+    // was typed into it whether or not the rename then landed, so asserting
+    // its value here would pass before anything had happened. The listing
+    // changes only once the file has actually moved.
+    const listing = () =>
+      fetch(`${sbServer.url}/.fs/`, {
+        headers: { "X-Sync-Mode": "true" },
+      }).then((r) => r.text());
+    await expect.poll(listing, { timeout: 20_000 }).toContain(renamed);
+    // The old name is gone, so this was a move and not a copy.
+    expect(await listing()).not.toContain(COSTS);
     await expect(currentPage(sbPage)).toHaveValue(renamed, { timeout: 20_000 });
     await expect(sbPage.locator("#sb-editor .cm-content")).toContainText(
       "Court Costs Relating to Evictions",
     );
-    // The old name is gone and the new file is on disk under it.
-    const listing = await (
-      await fetch(`${sbServer.url}/.fs/`, {
-        headers: { "X-Sync-Mode": "true" },
-      })
-    ).text();
-    expect(listing).toContain(renamed);
-    expect(listing).not.toContain(COSTS);
   });
 });
 
@@ -276,27 +276,39 @@ test.describe("Following a Denote link by keyboard", () => {
     await expect(sbPage.locator("#sb-editor .cm-content")).toContainText(
       "Issues of Law",
     );
-    // Wait for the *link* to be drawn, not just the page: a denote link is
-    // rendered as its description, and where a cursor placed in the raw text
-    // ends up depends on whether that widget is there yet. Without this the
-    // test was a race -- it passed alone and timed out when another file ran
-    // before it, which looked like a keybinding failure and was not.
     await expect(sbPage.locator("#sb-editor .cm-content")).toContainText(
       "Court Costs Relating to Evictions",
     );
 
-    // Put the cursor inside the link's target rather than clicking it, which
-    // would navigate on its own and prove nothing about the keybinding.
-    const moved = await sbPage.evaluate(() =>
-      (globalThis as any).sbRuntime.evalLuaScript(`
-        local text = editor.getText()
-        local pos = string.find(text, "[[denote:20240125T164237", 1, true)
-        if pos == nil then return -1 end
-        editor.moveCursor(pos + 10)
-        return pos
-      `),
-    );
-    expect(moved).toBeGreaterThan(0);
+    // Put the cursor in the link rather than clicking it, which would
+    // navigate on its own and prove nothing about the keybinding.
+    //
+    // Aimed at the link's *description*, and then checked, because a denote
+    // link renders as a widget: a position inside the hidden `denote:ID` half
+    // falls inside an atomic range, and CodeMirror moves a cursor out of one.
+    // Moved forwards it lands past the link, `nodeAtPos` finds nothing to
+    // follow, and the command does nothing at all -- which looked for a long
+    // time like a keybinding that had stopped working. Whether the cursor got
+    // pushed depended on whether the widget had been drawn yet, so the whole
+    // test was a race: it passed alone and timed out when another file ran
+    // first. Polling until the cursor really is inside the link is the fix.
+    const inLink = async () =>
+      await sbPage.evaluate(() =>
+        (globalThis as any).sbRuntime.evalLuaScript(`
+          local text = editor.getText()
+          local from = string.find(text, "[[denote:20240125T164237", 1, true)
+          if from == nil then return false end
+          local close = string.find(text, "]]", from, true)
+          local desc = string.find(text, "Court Costs", from, true)
+          if desc == nil or close == nil then return false end
+          editor.moveCursor(desc + 4)
+          local at = editor.getCursor()
+          -- Lua's find is 1-based and a cursor is a 0-based offset, so the
+          -- span the cursor must land in is [from - 1, close].
+          return at >= from - 1 and at <= close
+        `),
+      );
+    await expect.poll(inLink, { timeout: 20_000 }).toBe(true);
 
     await sbPage.keyboard.press(`${mod}+Enter`);
     await expect(currentPage(sbPage)).toHaveValue(COSTS, { timeout: 20_000 });
@@ -366,13 +378,13 @@ test.describe("Creating a Denote note", () => {
     await answer(page, value);
   }
 
-  test("Denote: New Note builds the file name and front matter", async ({
+  test("Note: New builds the file name and front matter", async ({
     sbPage,
     sbServer,
   }) => {
     await gotoSilverBulletPage(sbPage, sbServer, "index");
     await showMetadata(sbPage);
-    await runCommand(sbPage, "Denote: New Note");
+    await runCommand(sbPage, "Note: New");
     await answer(sbPage, "Kiemle & Hagood Company v. Daniels");
     // The keyword picker completes over keywords already in the space; a new
     // one is typed through its own row.
@@ -413,7 +425,7 @@ test.describe("Creating a Denote note", () => {
     sbServer,
   }) => {
     await gotoSilverBulletPage(sbPage, sbServer, "index");
-    await runCommand(sbPage, "Denote: New Note");
+    await runCommand(sbPage, "Note: New");
     await answer(sbPage, "Freshly Made Note");
     await newKeyword(sbPage, "fresh");
     await finishKeywords(sbPage);
@@ -444,13 +456,13 @@ test.describe("Creating a Denote note", () => {
     expect(text).toContain(`[[denote:${identifier}][Freshly Made Note]]`);
   });
 
-  test("Denote: New Note with Signature includes the signature", async ({
+  test("Note: New with Signature includes the signature", async ({
     sbPage,
     sbServer,
   }) => {
     await gotoSilverBulletPage(sbPage, sbServer, "index");
     await showMetadata(sbPage);
-    await runCommand(sbPage, "Denote: New Note with Signature");
+    await runCommand(sbPage, "Note: New with Signature");
     await answer(sbPage, "Nature of Unlawful Detainer");
     await newKeyword(sbPage, "ud");
     await finishKeywords(sbPage);
@@ -641,7 +653,7 @@ test.describe("Dynamic blocks", () => {
 
     await sbPage.evaluate(() =>
       (globalThis as any).sbRuntime.evalLuaScript(
-        'editor.invokeCommand("Denote: Update Dynamic Blocks")',
+        'editor.invokeCommand("Note: Update Dynamic Blocks")',
       ),
     );
     await sbPage.waitForTimeout(2500);
@@ -783,7 +795,7 @@ test.describe("Inserting dynamic blocks", () => {
     await atEnd(sbPage);
     await sbPage.evaluate(() => {
       void (globalThis as any).sbRuntime.evalLuaScript(
-        'editor.invokeCommand("Denote: Insert Links Block")',
+        'editor.invokeCommand("Note: Insert Links Block")',
       );
     });
     const prompt = sbPage
@@ -820,7 +832,7 @@ test.describe("Inserting dynamic blocks", () => {
     await atEnd(sbPage);
     await sbPage.evaluate(() =>
       (globalThis as any).sbRuntime.evalLuaScript(
-        'editor.invokeCommand("Denote: Insert Backlinks Block")',
+        'editor.invokeCommand("Note: Insert Backlinks Block")',
       ),
     );
     await sbPage.waitForTimeout(3000);
@@ -968,7 +980,7 @@ test.describe("Link or create", () => {
 
     await sbPage.evaluate(() => {
       void (globalThis as any).sbRuntime.evalLuaScript(
-        `editor.invokeCommand("Denote: Insert or Edit Link")`,
+        `editor.invokeCommand("Note: Insert or Edit Link")`,
       );
     });
     const filter = sbPage

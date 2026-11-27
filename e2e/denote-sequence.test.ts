@@ -114,7 +114,7 @@ test.describe("Signatures as a sequence", () => {
     sbServer,
   }) => {
     await gotoSilverBulletPage(sbPage, sbServer, JD_DIRECT);
-    await runCommand(sbPage, "Denote: Browse by Signature");
+    await runCommand(sbPage, "Note: Browse by Signature");
     const rows = await pickerRows(sbPage);
     // Numeric order within a level, a parent before its children.
     const order = rows.map((r) => r.trim().split(/\s+/)[0]);
@@ -128,7 +128,7 @@ test.describe("Signatures as a sequence", () => {
   }) => {
     await gotoSilverBulletPage(sbPage, sbServer, JD_TERM);
     // 21=01's parent is 21 -- or the 21=00 hub; both are offered.
-    await runCommand(sbPage, "Denote: Signature Parent");
+    await runCommand(sbPage, "Note: Signature Parent");
     let rows = await pickerRows(sbPage);
     expect(rows.join("\n")).toContain("21  Civic Design");
     expect(rows.join("\n")).toContain("21=00  iteam");
@@ -136,14 +136,14 @@ test.describe("Signatures as a sequence", () => {
 
     // From the hub, the children are the category's.
     await gotoSilverBulletPage(sbPage, sbServer, JD_HUB);
-    await runCommand(sbPage, "Denote: Signature Children");
+    await runCommand(sbPage, "Note: Signature Children");
     // Only one child: 21=01 -- so it opens directly.
     await expect(currentPage(sbPage)).toHaveValue(JD_TERM, { timeout: 20_000 });
 
     // 22's only sibling at the top level with a different signature: 21 and 0
     // family. From 22, siblings are the other top-level signatures.
     await gotoSilverBulletPage(sbPage, sbServer, JD_OTHER);
-    await runCommand(sbPage, "Denote: Signature Siblings");
+    await runCommand(sbPage, "Note: Signature Siblings");
     rows = await pickerRows(sbPage);
     expect(rows.join("\n")).toContain("21  Civic Design");
     expect(rows.join("\n")).not.toContain("21=01");
@@ -155,18 +155,18 @@ test.describe("Signatures as a sequence", () => {
     sbServer,
   }) => {
     await gotoSilverBulletPage(sbPage, sbServer, COSTS);
-    await runCommand(sbPage, "Denote: Signature Next");
+    await runCommand(sbPage, "Note: Signature Next");
     await expect(currentPage(sbPage)).toHaveValue(WAIVERS, { timeout: 20_000 });
-    await runCommand(sbPage, "Denote: Signature Previous");
+    await runCommand(sbPage, "Note: Signature Previous");
     await expect(currentPage(sbPage)).toHaveValue(COSTS, { timeout: 20_000 });
   });
 
-  test("New Child Note proposes the next free address at the siblings' width", async ({
+  test("New Child proposes the next free address at the siblings' width", async ({
     sbPage,
     sbServer,
   }) => {
     await gotoSilverBulletPage(sbPage, sbServer, JD_HUB);
-    await runCommand(sbPage, "Denote: New Child Note");
+    await runCommand(sbPage, "Note: New Child");
     // The proposal: 21=01 exists, so 21=02, two digits wide.
     const prompt = sbPage
       .locator(".sb-modal-box input, .sb-modal input")
@@ -195,7 +195,7 @@ test.describe("Signatures as a sequence", () => {
     sbServer,
   }) => {
     await gotoSilverBulletPage(sbPage, sbServer, JD_OTHER);
-    await runCommand(sbPage, "Denote: Set Signature");
+    await runCommand(sbPage, "Note: Set Signature");
     await answer(sbPage, "23");
     const renamed = "20250101T100003==23--backyard-shed__shed.org";
     await expect(currentPage(sbPage)).toHaveValue(renamed, { timeout: 20_000 });
@@ -212,7 +212,7 @@ test.describe("Signatures as a sequence", () => {
     sbServer,
   }) => {
     await gotoSilverBulletPage(sbPage, sbServer, JD_DIRECT);
-    await runCommand(sbPage, "Denote: Rename");
+    await runCommand(sbPage, "Note: Rename");
     await answer(sbPage, "Civic design practice");
     await answer(sbPage, "iteam, design");
     await answer(sbPage, "21=05");
@@ -237,7 +237,7 @@ test.describe("Signatures as a sequence", () => {
     // unaccepted, which is how this went wrong.
     await gotoSilverBulletPage(sbPage, sbServer, JD_DIRECT);
     await showMetadata(sbPage);
-    await runCommand(sbPage, "Denote: Set Keywords");
+    await runCommand(sbPage, "Note: Set Keywords");
     const filter = sbPage
       .locator(".sb-modal-box input, .sb-modal input")
       .first();
@@ -267,7 +267,7 @@ test.describe("Signatures as a sequence", () => {
     // one.
     await gotoSilverBulletPage(sbPage, sbServer, JD_TERM);
     await showMetadata(sbPage);
-    await runCommand(sbPage, "Denote: Set Keywords");
+    await runCommand(sbPage, "Note: Set Keywords");
     const filter = sbPage
       .locator(".sb-modal-box input, .sb-modal input")
       .first();
@@ -292,7 +292,7 @@ test.describe("Signatures as a sequence", () => {
     // offered back, and picking one takes it off. `denote-rename-file-keywords`
     // is one command for both, and this is what that costs at the UI.
     await gotoSilverBulletPage(sbPage, sbServer, WAIVERS);
-    await runCommand(sbPage, "Denote: Set Keywords");
+    await runCommand(sbPage, "Note: Set Keywords");
     const filter = sbPage
       .locator(".sb-modal-box input, .sb-modal input")
       .first();
@@ -465,12 +465,12 @@ test.describe("Generated pages under denote/", () => {
     // Link has one place to go, and from Hydroponics Find Backlink has one.
     await gotoSilverBulletPage(sbPage, sbServer, JD_HUB);
     await sbPage.waitForTimeout(2000);
-    await runCommand(sbPage, "Denote: Find Link");
+    await runCommand(sbPage, "Note: Find Link");
     let rows = await pickerRows(sbPage);
     expect(rows.join("\n")).toContain("Hydroponics");
     await sbPage.keyboard.press("Enter");
     await expect(currentPage(sbPage)).toHaveValue(JD_TERM, { timeout: 20_000 });
-    await runCommand(sbPage, "Denote: Find Backlink");
+    await runCommand(sbPage, "Note: Find Backlink");
     rows = await pickerRows(sbPage);
     expect(rows.join("\n")).toContain("iteam");
     await sbPage.keyboard.press("Enter");

@@ -71,13 +71,16 @@ test("the namespaces are the ones this product means to have", () => {
   // panel at the same tab, and the other four library commands were already
   // `Library:`. Singular is also the house style -- `Page:`, `Document:`,
   // `Space:`, `Task:`.
+  //
+  // `Denote` is deliberately not here. Every note in this fork is a Denote
+  // note, so the prefix named the Emacs package a command came from rather
+  // than anything a reader needs; `Note:` says what the command acts on.
   expect([...new Set(all.map((c) => c.name.split(": ")[0]))].sort()).toEqual([
     "Blog",
     "Client",
     "Comment",
     "Configuration",
     "Debug",
-    "Denote",
     "Document",
     "Editor",
     "Flash",
@@ -86,6 +89,7 @@ test("the namespaces are the ones this product means to have", () => {
     "Journal",
     "Library",
     "Navigate",
+    "Note",
     "Outline",
     "Page",
     "Plugs",
@@ -120,14 +124,14 @@ test("keywords are one command, not an add and a remove", () => {
   // note's own keywords, and what you leave behind is what it gets. Two
   // commands meant picking one before knowing whether the edit was an
   // addition or a removal, and neither could do both at once.
-  // `Denote: Keywords Page` is excluded on purpose: it opens the generated
+  // `Note: Keywords Page` is excluded on purpose: it opens the generated
   // index of the library's keywords and edits nothing.
   expect(
     all
       .map((c) => c.name)
-      .filter((n) => /keyword/i.test(n) && n !== "Denote: Keywords Page")
+      .filter((n) => /keyword/i.test(n) && n !== "Note: Keywords Page")
       .sort(),
-  ).toEqual(["Denote: Set Keywords"]);
+  ).toEqual(["Note: Set Keywords"]);
 });
 
 test("a command that writes says so", () => {
@@ -138,12 +142,12 @@ test("a command that writes says so", () => {
   // command writes is not visible from its manifest entry; the list is the
   // claim, and the assertion holds it to it.
   const writes = [
-    "Denote: New Child Note",
-    "Denote: New Sibling Note",
-    "Denote: Rename",
-    "Denote: Rename File from Front Matter",
-    "Denote: Set Keywords",
-    "Denote: Set Signature",
+    "Note: New Child",
+    "Note: New Sibling",
+    "Note: Rename",
+    "Note: Rename from Front Matter",
+    "Note: Set Keywords",
+    "Note: Set Signature",
   ];
   for (const name of writes) {
     const command = all.find((c) => c.name === name);
@@ -163,15 +167,15 @@ test("a command that writes says so", () => {
 
   // The creation commands write too, but they make a note rather than
   // changing one, so a page in front of them is not required -- only
-  // `Denote: New Note from Region`, which reads the selection.
+  // `Note: New from Region`, which reads the selection.
   for (const name of [
-    "Denote: New Note",
-    "Denote: New Note with Signature",
-    "Denote: New Note of Type",
-    "Denote: New Note with Date",
-    "Denote: New Note in Subdirectory",
-    "Denote: New Note from Template",
-    "Denote: New Note from Region",
+    "Note: New",
+    "Note: New with Signature",
+    "Note: New of Type",
+    "Note: New with Date",
+    "Note: New in Subdirectory",
+    "Note: New from Template",
+    "Note: New from Region",
   ]) {
     const command = all.find((c) => c.name === name);
     expect(command, `${name} is missing from the manifests`).toBeDefined();
@@ -180,8 +184,39 @@ test("a command that writes says so", () => {
       `${name} writes but is offered read-only`,
     ).toBe("rw");
   }
-  const region = all.find((c) => c.name === "Denote: New Note from Region");
+  const region = all.find((c) => c.name === "Note: New from Region");
   expect(region?.requireEditor, "the region command reads a selection").toBe(
     "page",
   );
+});
+
+test("the path-thinking page commands are not offered", () => {
+  // A Denote library is addressed by identifier and its file names are built,
+  // not typed. These five contradicted that from inside the palette, and
+  // `Page: Copy` was worse than confusing: it wrote the page back verbatim
+  // with the current name prefilled, so it could mint two notes sharing one
+  // identifier -- which is the one thing Denote's manual says breaks linking,
+  // and it breaks it silently.
+  //
+  // The functions all remain; the top bar still renames a page and a document
+  // through `invokeFunction`, by function name rather than command name.
+  for (const name of [
+    "Page: Rename",
+    "Page: Batch Rename Prefix",
+    "Page: Rename Linked Page",
+    "Page: Copy",
+    "Document: Rename Document",
+  ]) {
+    expect(
+      all.find((c) => c.name === name),
+      `${name} is back in the palette`,
+    ).toBeUndefined();
+  }
+  // And the Denote commands that replace them are there.
+  for (const name of ["Note: Rename", "Note: Rename from Front Matter"]) {
+    expect(
+      all.find((c) => c.name === name),
+      `${name} is missing`,
+    ).toBeDefined();
+  }
 });

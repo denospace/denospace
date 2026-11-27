@@ -126,7 +126,7 @@ test("A variant appends its own prompt", () => {
 
 test("A variant's prompt stays where the configuration put it", () => {
   // Someone who configured `signature` first meant to be asked first, and
-  // `Denote: New Note with Signature` should not ask again at the end.
+  // `Note: New with Signature` should not ask again at the end.
   expect(promptsWith(["signature", "title"], "signature")).toEqual([
     "signature",
     "title",

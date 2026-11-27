@@ -87,7 +87,7 @@ test.describe("Rename from front matter while typing", () => {
     );
     await sbPage.evaluate(() => {
       void (globalThis as any).sbRuntime.evalLuaScript(
-        `editor.invokeCommand("Denote: Rename File from Front Matter")`,
+        `editor.invokeCommand("Note: Rename from Front Matter")`,
       );
     });
     await expect

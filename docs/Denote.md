@@ -63,20 +63,20 @@ SilverBullet renders such a link as its description alone, resolves the identifi
 Resolution uses the file list rather than the index, because every note's name begins with its own identifier. That keeps it free of ordering problems during a full reindex, and means a link resolves as soon as its target file exists.
 
 # Creating notes
-**Denote: New Note** prompts for a title and keywords, then writes a correctly named file with front matter into the space root — what `denote-directory` means, since Denote keeps a flat library and relies on keywords rather than folders.
+**Note: New** prompts for a title and keywords, then writes a correctly named file with front matter into the space root — what `denote-directory` means, since Denote keeps a flat library and relies on keywords rather than folders.
 
 ## The prompt pipeline
 Denote's creation commands are not seven separate things. `denote` asks what `denote-prompts` lists, which defaults to title then keywords, and every variant is that same list with **one prompt appended**. That is the design here too: one pipeline, and a command says only which prompt it exists for.
 
 | Command | Appends | Emacs |
 |---|---|---|
-| **Denote: New Note** | — | `denote` |
-| **Denote: New Note with Signature** | the signature | `denote-signature` |
-| **Denote: New Note of Type** | the file format | `denote-type` |
-| **Denote: New Note with Date** | the date the identifier is minted from | `denote-date` |
-| **Denote: New Note in Subdirectory** | the directory to write into | `denote-subdirectory` |
-| **Denote: New Note from Template** | the body to start with | `denote-template` |
-| **Denote: New Note from Region** | — (the selection becomes the body) | `denote-region` |
+| **Note: New** | — | `denote` |
+| **Note: New with Signature** | the signature | `denote-signature` |
+| **Note: New of Type** | the file format | `denote-type` |
+| **Note: New with Date** | the date the identifier is minted from | `denote-date` |
+| **Note: New in Subdirectory** | the directory to write into | `denote-subdirectory` |
+| **Note: New from Template** | the body to start with | `denote-template` |
+| **Note: New from Region** | — (the selection becomes the body) | `denote-region` |
 
 Set `denote.prompts` to change what **every** one of them asks, and in what order:
 
@@ -86,17 +86,17 @@ config.set("denote.prompts", { "title", "keywords", "subdirectory" })
 
 The names are `denote-prompts`' own — `title`, `keywords`, `signature`, `date`, `file-type`, `subdirectory` and `template` — so a value copied out of an Emacs config translates across unchanged. An unrecognised name is dropped and reported rather than silently ignored, since a misspelled `title` would otherwise quietly make untitled notes. A prompt a variant exists for that is already in the list is asked where the list puts it, not a second time at the end.
 
-Two deliberate differences from Denote. A note here always needs a title, even with `title` left out of the list, because a library is read through pickers and views that show titles and a row with nothing in it cannot be found. And `denote-templates` lives in an init file in Emacs; the equivalent here already exists as pages tagged `meta/template/page`, so **Denote: New Note from Template** reads those — including their `|^|` cursor marker — rather than introducing a second kind of template.
+Two deliberate differences from Denote. A note here always needs a title, even with `title` left out of the list, because a library is read through pickers and views that show titles and a row with nothing in it cannot be found. And `denote-templates` lives in an init file in Emacs; the equivalent here already exists as pages tagged `meta/template/page`, so **Note: New from Template** reads those — including their `|^|` cursor marker — rather than introducing a second kind of template.
 
 Keywords are chosen from a picker that completes over every keyword already in the library, showing how many notes carry each — keeping a library's vocabulary consistent is most of what completion is for. Pick as many as you like; the **✓ Done** row ends the prompt, as does **Escape**, which is Denote's empty answer. A keyword not yet in use is entered through the **＋ New keyword** row.
 
-The same prompt both adds and removes, which is why there is one `Denote: Set Keywords` rather than Denote's add/remove pair: keywords the note already carries are listed first as **✕** rows, and taking one takes it off. Denote's `-add-keywords` and `-remove-keywords` are for files marked in Dired, not for the file in front of you.
+The same prompt both adds and removes, which is why there is one `Note: Set Keywords` rather than Denote's add/remove pair: keywords the note already carries are listed first as **✕** rows, and taking one takes it off. Denote's `-add-keywords` and `-remove-keywords` are for files marked in Dired, not for the file in front of you.
 
 Typed keywords are separated by **commas**, matching Denote's `completing-read-multiple`. Whitespace does *not* separate them: `Genuine Issue Trial` is one keyword, sluggified to `genuineissuetrial`. That is exactly why keyword sluggification joins words instead of hyphenating them.
 
 The identifier is the creation time to the second, bumped forward if a note already holds it — an identifier is a note's identity, so a duplicate would break every inbound link that resolves against it.
 
-Set `denote.fileType` to `org` (the default), `markdown-yaml` or `markdown-toml` to choose the format new notes are written in; **Denote: New Note of Type** overrides it for one note. Denote's fourth type, `text`, is read but not offered: it writes `.txt`, which here is a document rather than a page — not indexed, and not openable as a note.
+Set `denote.fileType` to `org` (the default), `markdown-yaml` or `markdown-toml` to choose the format new notes are written in; **Note: New of Type** overrides it for one note. Denote's fourth type, `text`, is read but not offered: it writes `.txt`, which here is a document rather than a page — not indexed, and not openable as a note.
 
 # Open or create, link or create
 Typing a name the space does not hold and taking the page picker's **Create**
@@ -121,7 +121,7 @@ no Denote equivalent: the bare name resolves to nothing, and following it would
 make a note outside the naming scheme.
 
 The row sorts below every real match and is never the default selection, since
-Denote's own prompt creates on *no* match. **Denote: Insert or Edit Link**
+Denote's own prompt creates on *no* match. **Note: Insert or Edit Link**
 (`Alt-i`) does the same thing from the command palette, picking from the
 library first.
 
@@ -157,7 +157,7 @@ never taken from the front matter: it is the note's identity.
 
 Doing this automatically is only reasonable because Denote links address notes
 by identifier, so no inbound link is ever invalidated by a rename. Set
-`denote.renameOnSave` to `false` to make it manual; **Denote: Rename File from
+`denote.renameOnSave` to `false` to make it manual; **Note: Rename File from
 Front Matter** does it on demand either way.
 
 An absent `#+filetags:` line means "unknown", not "none" — the file name keeps
@@ -186,7 +186,7 @@ not own — the rewrite steps aside if you started typing while it rendered,
 and it is a no-op once nothing changes, so it settles after one pass. The
 delimiters are left intact, so the file stays a valid Org dynamic block for
 Emacs. Set `denote.updateDblocksOnOpen` or `denote.updateDblocksOnSave` to
-`false` to make either manual; **Denote: Update Dynamic Blocks** does it on
+`false` to make either manual; **Note: Update Dynamic Blocks** does it on
 demand either way.
 
 `:regexp` is matched against the whole **file name**, which is why a keyword
@@ -219,13 +219,13 @@ category), and readable by any tool that lists files.
 
 | Command | Does | Emacs |
 |---|---|---|
-| `Denote: Browse by Signature` | Every signed note, in sequence order. Type `21=` to narrow to a branch. | `denote-sort-dired` |
-| `Denote: Signature Parent` | The note above: `21=14` → `21`, or `21=00` where a hub holds the category's address | `denote-sequence-find` |
-| `Denote: Signature Children` | One level down. From a `NN=00` hub, the category's notes | `denote-sequence-find` |
-| `Denote: Signature Siblings` | The same parent, the same depth | `denote-sequence-find` |
-| `Denote: Signature Next` / `Previous` | Along the siblings | `denote-sequence-find-next-sibling` |
-| `Denote: New Child Note` / `New Sibling Note` | A note whose signature is the next free one — `21=09` is followed by `21=10`, at the siblings' width. The proposal can be edited. | `denote-sequence-new-child-of-current` |
-| `Denote: Set Signature` | Just the signature | `denote-rename-file-signature` |
+| `Note: Browse by Signature` | Every signed note, in sequence order. Type `21=` to narrow to a branch. | `denote-sort-dired` |
+| `Note: Signature Parent` | The note above: `21=14` → `21`, or `21=00` where a hub holds the category's address | `denote-sequence-find` |
+| `Note: Signature Children` | One level down. From a `NN=00` hub, the category's notes | `denote-sequence-find` |
+| `Note: Signature Siblings` | The same parent, the same depth | `denote-sequence-find` |
+| `Note: Signature Next` / `Previous` | Along the siblings | `denote-sequence-find-next-sibling` |
+| `Note: New Child` / `New Sibling` | A note whose signature is the next free one — `21=09` is followed by `21=10`, at the siblings' width. The proposal can be edited. | `denote-sequence-new-child-of-current` |
+| `Note: Set Signature` | Just the signature | `denote-rename-file-signature` |
 
 Sequence order is numeric where both components are numbers (`21=2` before
 `21=14`) and textual otherwise, so Luhmann-style `1a`, `1a1`, `1b` sort as
@@ -246,9 +246,9 @@ never changes, so nothing that points at the note breaks.
 
 | Command | Emacs |
 |---|---|
-| `Denote: Rename` — title, keywords and signature, each defaulting to what the note has | `denote-rename-file` |
-| `Denote: Set Keywords` — the note's own keywords, prefilled; add by picking or typing, remove by picking one back off | `denote-rename-file-keywords` |
-| `Denote: Set Signature` | `denote-rename-file-signature` |
+| `Note: Rename` — title, keywords and signature, each defaulting to what the note has | `denote-rename-file` |
+| `Note: Set Keywords` — the note's own keywords, prefilled; add by picking or typing, remove by picking one back off | `denote-rename-file-keywords` |
+| `Note: Set Signature` | `denote-rename-file-signature` |
 
 # Generated pages
 Some views are better read than commanded. Pages under `denote/` do not
@@ -265,12 +265,12 @@ Reopen to refresh.
 | `denote/calendar`, `denote/calendar/2024` | A year of the journal — see [[#Journal calendar]] | `denote-journal-calendar` |
 | `denote/health` | Identifiers shared by two files, links to identifiers no note carries, file names out of step with their front matter | `denote-explore` |
 
-`Denote: Signatures Page`, `Denote: Keywords Page`, `Journal: Calendar`
-and `Denote: Library Health` open them from the palette.
+`Note: Signatures Page`, `Note: Keywords Page`, `Journal: Calendar`
+and `Note: Library Health` open them from the palette.
 
-Three pickers round this out: `Denote: Find Link` (the notes this one links
-to — `denote-find-link`), `Denote: Find Backlink` (the notes linking here —
-`denote-find-backlink`) and `Denote: Random Note` (`denote-explore-random-note`).
+Three pickers round this out: `Note: Find Link` (the notes this one links
+to — `denote-find-link`), `Note: Find Backlink` (the notes linking here —
+`denote-find-backlink`) and `Note: Random` (`denote-explore-random-note`).
 
 # Journal calendar
 `denote/calendar` is a year of the journal, a month per section, laid out as
@@ -356,6 +356,16 @@ file name. These keep a library consistent.
   is not: an identifier is identity.
 * **Change file type** (`denote-change-file-type-and-front-matter`) — convert a
   note between Org, Markdown and plain text, rewriting its front matter.
+  `Note: New of Type` chooses the format for a *new* note; converting an
+  existing one is the other half.
+
+SilverBullet's own path-based commands are no longer offered: `Page: Rename`
+prompted for a whole file name, which in this library is a name you are not
+meant to type, and `Page: Batch Rename Prefix` and `Page: Rename Linked Page`
+reorganise folders in a space that has none. `Page: Copy` was removed for a
+sharper reason — a verbatim read-then-write with the current name prefilled
+can mint two notes carrying one identifier, which §7.11 calls the thing that
+breaks linking. The top bar still renames a file directly.
 
 ## 4. Beyond the core package
 Each is a separate Emacs package; each maps onto something SilverBullet

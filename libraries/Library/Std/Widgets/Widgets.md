@@ -295,7 +295,7 @@ end
 -- other pages that say this note's title without linking to it. Only a
 -- title worth searching for -- four characters or more, and not a journal
 -- entry's date -- and only pages that do not already link here. The panel
--- lists them; `Denote: Link Mentions` picks one and rewrites that page's
+-- lists them; `Note: Link Mentions` picks one and rewrites that page's
 -- first plain mention after the paragraph's start into a Denote link.
 local function titleOf(pageName)
   local page = index.getObjectByRef(pageName, "page", pageName)
@@ -385,11 +385,11 @@ function widgets.unlinkedMentionsMarkdown(pageName)
   return table.concat(out)
 end
 
--- `Denote: Link Mentions`: pick an unlinked mention of the open note and
+-- `Note: Link Mentions`: pick an unlinked mention of the open note and
 -- turn it into a link, the way org-roam's unlinked-references buffer offers
 -- to. Stays open for the next one until Escape.
 command.define {
-  name = "Denote: Link Mentions",
+  name = "Note: Link Mentions",
   run = function()
     local pageName = editor.getCurrentPage()
     while true do

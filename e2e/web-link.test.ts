@@ -73,7 +73,7 @@ test.describe("Insert Web Link", () => {
   async function insertWebLink(page: any) {
     await page.evaluate(() => {
       void (globalThis as any).sbRuntime.evalLuaScript(
-        `editor.invokeCommand("Denote: Insert Web Link")`,
+        `editor.invokeCommand("Note: Insert Web Link")`,
       );
     });
   }

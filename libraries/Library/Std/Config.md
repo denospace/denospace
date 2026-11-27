@@ -602,7 +602,7 @@ config.define("denote", {
         },
       },
       default = { "title", "keywords" },
-      description = "`denote-prompts`: which questions creating a note asks, and in what order. Every creation command runs this list plus the one prompt it exists for, so `Denote: New Note with Signature` is this list with `signature` appended.",
+      description = "`denote-prompts`: which questions creating a note asks, and in what order. Every creation command runs this list plus the one prompt it exists for, so `Note: New with Signature` is this list with `signature` appended.",
       ui = { category = "Denote", label = "Creation prompts", priority = 6 },
     },
     fileType = {
@@ -611,7 +611,7 @@ config.define("denote", {
       -- `.txt`, which here is a document rather than a page.
       enum = { "org", "markdown-yaml", "markdown-toml" },
       default = "org",
-      description = "`denote-file-type`: the format new notes are written in. `Denote: New Note of Type` overrides it for one note.",
+      description = "`denote-file-type`: the format new notes are written in. `Note: New of Type` overrides it for one note.",
       ui = { category = "Denote", label = "File type", priority = 5 },
     },
     renameOnSave = {

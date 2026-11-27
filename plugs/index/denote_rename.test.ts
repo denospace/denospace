@@ -121,7 +121,7 @@ test("a note already correctly named in a folder is left alone", () => {
   ).toBeNull();
 });
 
-// `Denote: Set Keywords` rewrites the note only when the set actually
+// `Note: Set Keywords` rewrites the note only when the set actually
 // changed. Escaping the prompt returns the keywords it opened with, so
 // without this check the ordinary way out of the prompt would rewrite the
 // front matter, re-save the file and report a rename that did not happen.

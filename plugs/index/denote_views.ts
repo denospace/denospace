@@ -351,7 +351,7 @@ async function renderHealth(): Promise<string> {
     "",
     `* ${mismatched.length} notes whose file name does not match their front matter`,
     ...(mismatched.length
-      ? ["Open one and run *Denote: Rename File from Front Matter*."]
+      ? ["Open one and run *Note: Rename from Front Matter*."]
       : ["None."]),
     ...mismatched.map((m) => `- ${pageLink(m.name)} → ${m.wanted}`),
     "",

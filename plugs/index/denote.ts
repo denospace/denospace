@@ -805,7 +805,7 @@ const notePrompts: Record<DenotePromptName, NotePrompt> = {
   },
 
   template: async (draft) => {
-    // `Denote: New Note from Region` has already put the selection in the
+    // `Note: New from Region` has already put the selection in the
     // body, and a template would overwrite it -- losing the text the command
     // exists to keep. The selection wins, and says so, because this only
     // happens to someone who has put `template` in `denote.prompts` and is
@@ -991,7 +991,7 @@ export function newDenoteNoteFromTemplateCommand(): Promise<void> {
  *
  * The selection is left where it is, as Denote leaves it — this lifts a
  * passage into a note of its own, it does not cut it out. Linking the two is
- * a separate decision, and `Denote: Insert or Edit Link` already makes a note
+ * a separate decision, and `Note: Insert or Edit Link` already makes a note
  * out of a selection *and* links to it, which is the other thing you might
  * have wanted.
  */

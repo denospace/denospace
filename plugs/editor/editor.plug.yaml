@@ -51,12 +51,15 @@ functions:
       requireEditor: page
       priority: 1
       menu: { location: file, group: "4_page", order: 2, label: "Delete Page" }
+  # Not offered: it read the page and wrote it back verbatim with the current
+  # name prefilled, so taking the default -- or editing only the title part --
+  # produced two notes carrying one identifier. Denote's manual calls a
+  # duplicate identifier the thing that breaks linking, and it breaks it
+  # silently: both notes resolve, and which one a `denote:` link opens depends
+  # on which the file list happens to yield first. A copy that minted a fresh
+  # identifier would be a useful command, and is not this one.
   copyPage:
     path: "./page.ts:copyPage"
-    command:
-      name: "Page: Copy"
-      requireMode: rw
-      requireEditor: page
 
   # Completion
   pageComplete:

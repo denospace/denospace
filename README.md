@@ -60,36 +60,57 @@ everywhere.
 
 ## Commands
 
+Everything notes is under `Note:`, not `Denote:`. Every note in this fork *is*
+a Denote note, so the prefix named the Emacs package a command came from
+rather than anything you need while using it — and `Note: New` beats
+`Denote: New Note` for the two words you actually type.
+
+If you had bound keys to the old names through **Configuration: Keyboard
+Shortcuts**, those overrides are stored as `command.update { name = ... }` in
+a managed block on your CONFIG page, keyed by command name, so they will not
+apply any more. Rebind, or edit the names in that block.
+
+Five SilverBullet commands are also no longer offered, because they think in
+paths while this library is addressed by identifier: `Page: Rename`,
+`Page: Batch Rename Prefix`, `Page: Rename Linked Page`,
+`Document: Rename Document` and `Page: Copy`. `Note: Rename` asks for the
+title, keywords and signature a name is *built* from, and
+`Note: Rename from Front Matter` derives it; the top bar still renames a file
+directly, which is where a raw rename belongs. `Page: Copy` went for a sharper
+reason: it wrote the page back verbatim with the current name prefilled, so it
+could mint two notes carrying one identifier — the one thing Denote's manual
+says breaks linking, and it breaks it silently.
+
 | Command | Emacs equivalent |
 |---|---|
-| `Denote: New Note` | `denote` |
-| `Denote: New Note with Signature` | `denote-signature` |
-| `Denote: New Note of Type` | `denote-type` |
-| `Denote: New Note with Date` | `denote-date` |
-| `Denote: New Note in Subdirectory` | `denote-subdirectory` |
-| `Denote: New Note from Template` | `denote-template` |
-| `Denote: New Note from Region` | `denote-region` |
-| `Denote: Insert or Edit Link` (`Alt-i`) | `denote-link-or-create`, `org-insert-link` |
-| `Denote: Insert Web Link` (`Shift-Alt-i`) | `org-insert-link`, `org-cliplink` |
+| `Note: New` | `denote` |
+| `Note: New with Signature` | `denote-signature` |
+| `Note: New of Type` | `denote-type` |
+| `Note: New with Date` | `denote-date` |
+| `Note: New in Subdirectory` | `denote-subdirectory` |
+| `Note: New from Template` | `denote-template` |
+| `Note: New from Region` | `denote-region` |
+| `Note: Insert or Edit Link` (`Alt-i`) | `denote-link-or-create`, `org-insert-link` |
+| `Note: Insert Web Link` (`Shift-Alt-i`) | `org-insert-link`, `org-cliplink` |
 | `Zotero: Insert Citation` | `citar-insert-citation` |
 | `Zotero: New Reference Note` | `citar-denote-create-note` |
 | `Zotero: Add File` | — |
 | `Zotero: Sync Reference Notes` | — |
 | `Zotero: Sync Library`, `Zotero: Resync Library` | — |
-| `Denote: Toggle Link Display` | `org-toggle-link-display` |
-| `Denote: Rename File from Front Matter` | `denote-rename-file-using-front-matter` |
-| `Denote: Rename` | `denote-rename-file` |
-| `Denote: Set Keywords` | `denote-rename-file-keywords` |
-| `Denote: Set Signature` | `denote-rename-file-signature` |
-| `Denote: Browse by Signature` | `denote-sort-dired` |
-| `Denote: Signature Parent` / `Children` / `Siblings` / `Next` / `Previous` | `denote-sequence-find` |
-| `Denote: New Child Note` / `New Sibling Note` | `denote-sequence-new-child-of-current` / `-sibling-of-current` |
-| `Denote: Find Link` / `Find Backlink` | `denote-find-link` / `denote-find-backlink` |
-| `Denote: Random Note` | `denote-explore-random-note` |
-| `Denote: Signatures Page`, `Keywords Page`, `Library Health` | `denote-sequence-dired`, `denote-explore-*` |
+| `Note: Toggle Link Display` | `org-toggle-link-display` |
+| `Note: Rename from Front Matter` | `denote-rename-file-using-front-matter` |
+| `Note: Rename` | `denote-rename-file` |
+| `Note: Set Keywords` | `denote-rename-file-keywords` |
+| `Note: Set Signature` | `denote-rename-file-signature` |
+| `Note: Browse by Signature` | `denote-sort-dired` |
+| `Note: Signature Parent` / `Children` / `Siblings` / `Next` / `Previous` | `denote-sequence-find` |
+| `Note: New Child` / `New Sibling` | `denote-sequence-new-child-of-current` / `-sibling-of-current` |
+| `Note: Find Link` / `Find Backlink` | `denote-find-link` / `denote-find-backlink` |
+| `Note: Random` | `denote-explore-random-note` |
+| `Note: Signatures Page`, `Keywords Page`, `Library Health` | `denote-sequence-dired`, `denote-explore-*` |
 | `Journal: Calendar` / `Journal: Open Date` | `denote-journal-calendar` |
-| `Denote: Update Dynamic Blocks` | `org-update-all-dblocks` |
-| `Denote: Insert Links Block` and three siblings | `denote-org-extras-dblock-insert-*` |
+| `Note: Update Dynamic Blocks` | `org-update-all-dblocks` |
+| `Note: Insert Links Block` and three siblings | `denote-org-extras-dblock-insert-*` |
 
 The signature, keyword and journal commands are described in
 [docs/Denote.md](docs/Denote.md#signatures-as-sequences); the generated pages
@@ -110,7 +131,7 @@ buffer shows them: the note's title, the outline path the link sits under
 (`Monday 20 August › Site visit`), and the whole paragraph around it, so a
 person's page reads as what was said about them without opening each day.
 Below the backlinks, **Unlinked mentions** lists the pages that say this
-note's title without linking it; `Denote: Link Mentions` picks one and
+note's title without linking it; `Note: Link Mentions` picks one and
 makes the link. (Every paragraph and list item is indexed for this —
 `index.paragraph.all` is on in this fork.)
 
@@ -190,7 +211,7 @@ underline, rather than the red of a working one. Two shades of red are one
 colour at a glance, and "there is nothing there" is not the same fact as
 "this is a link".
 
-`Denote: Toggle Link Display` (`org-toggle-link-display`) turns the rendering
+`Note: Toggle Link Display` (`org-toggle-link-display`) turns the rendering
 off for the session, so every link reads as its source — for repairing link
 syntax by hand.
 
@@ -406,7 +427,7 @@ Denote-native places:
 
 * **The signature** is the address. A Johnny Decimal `21.14` is `==21=14` in
   the file name — sortable in Dired, matched by a dynamic block's `:regexp`,
-  and there for any tool that lists files. `Denote: Browse by Signature` and
+  and there for any tool that lists files. `Note: Browse by Signature` and
   the parent/children/siblings commands walk it; `denote/signatures` draws
   it as a tree.
 * **Keywords** cut across it.
@@ -994,7 +1015,7 @@ placeholders and rewrite them underneath Syncthing.
 * **Denote's `text` file type cannot be created.** It writes `.txt`, which is
   a document here rather than a page: not indexed, and not openable as a note.
   A library that already holds `.txt` notes still parses as one, so this is
-  only about `denote.fileType` and `Denote: New Note of Type`, which offer the
+  only about `denote.fileType` and `Note: New of Type`, which offer the
   Org and Markdown types alone.
 
 ## Documentation

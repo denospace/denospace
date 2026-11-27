@@ -89,7 +89,7 @@ export async function insertUrlLink(
 
 /**
  * `org-insert-link` (`M-I`) for a link out of the space: straight to the URL
- * prompt, where `Denote: Insert or Edit Link` (`M-i`) offers notes first.
+ * prompt, where `Note: Insert or Edit Link` (`M-i`) offers notes first.
  *
  * Which you want is known before you press the key -- a web link is not a
  * note you failed to find -- and a link to something you just read in a

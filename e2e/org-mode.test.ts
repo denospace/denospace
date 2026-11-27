@@ -304,7 +304,7 @@ A bare [[https://example.com/naked]] link.
     // `org-toggle-link-display` is how the source is read back.
     await sbPage.evaluate(() =>
       (globalThis as any).sbRuntime.evalLuaScript(
-        'editor.invokeCommand("Denote: Toggle Link Display")',
+        'editor.invokeCommand("Note: Toggle Link Display")',
       ),
     );
     await expect(editor).toContainText("[[https://example.com/some/long/path]");
