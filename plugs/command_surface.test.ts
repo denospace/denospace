@@ -236,6 +236,7 @@ test("a command that writes says so", () => {
   // command writes is not visible from its manifest entry; the list is the
   // claim, and the assertion holds it to it.
   const writes = [
+    "Note: Extract",
     "Note: New Child",
     "Note: New Sibling",
     "Note: Rename",
@@ -319,4 +320,34 @@ test("the path-thinking page commands are not offered", () => {
       `${name} is missing`,
     ).toBeDefined();
   }
+});
+
+test("the two commands Note: Extract and the link commands replace are gone", () => {
+  // `Page: Extract` wrote `space.writePage(typedTitle, text)`: a page named by
+  // whatever was typed, with no identifier, outside the naming scheme and
+  // unreachable by every `denote:` link. `Note: Extract` does the same job the
+  // way `denote-org-extract-org-subtree` does it, so the old one is gone
+  // rather than hidden -- nothing reached either function by name.
+  //
+  // `Text: Link Selection` hard-coded `[text](url)`, which on an Org note is
+  // something neither format can follow, and `Note: Insert or Edit Link` and
+  // `Note: Insert Web Link` already write a link in the page's own syntax.
+  for (const name of ["Page: Extract", "Text: Link Selection"]) {
+    expect(
+      all.find((c) => c.name === name),
+      `${name} is back`,
+    ).toBeUndefined();
+  }
+  const extract = offered.find((c) => c.name === "Note: Extract");
+  expect(extract, "Note: Extract is missing").toBeDefined();
+  // It reads the subtree the cursor is in, so it needs the page in front of
+  // it, and it both writes a note and edits the page it came from.
+  expect(extract?.requireEditor).toBe("page");
+  expect(extract?.requireMode).toBe("rw");
+
+  // The `Text:` namespace is not emptied by this -- the formatting commands
+  // are all still there, which is why it stays in the namespace list.
+  expect(
+    offered.filter((c) => c.name.startsWith("Text: ")).length,
+  ).toBeGreaterThan(5);
 });

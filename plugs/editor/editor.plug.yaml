@@ -204,12 +204,10 @@ functions:
       requireMode: rw
       requireEditor: page
       menu: { location: edit.format, group: "2_block", order: 2, label: "Numbered List" }
-  linkSelection:
-    path: ./text.ts:linkSelection
-    command:
-      name: "Text: Link Selection"
-      requireMode: rw
-      requireEditor: page
+  # `Text: Link Selection` was here. It wrote `[text](url)` whatever the page,
+  # so on an Org note it produced something neither format can follow, and
+  # `Note: Insert or Edit Link` and `Note: Insert Web Link` already do the job
+  # in the page's own syntax.
   bold:
     path: ./text.ts:wrapSelection
     command:

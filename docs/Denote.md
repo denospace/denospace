@@ -78,6 +78,10 @@ Denote's creation commands are not seven separate things. `denote` asks what `de
 | **Note: New from Template** | the body to start with | `denote-template` |
 | **Note: New from Region** | — (the selection becomes the body) | `denote-region` |
 
+**Note: Extract** is not in that table, because it is not `denote` with a
+prompt appended: it reads what it can off the heading it is extracting and asks
+only for the rest. See [[#Extracting a subtree]].
+
 Set `denote.prompts` to change what **every** one of them asks, and in what order:
 
 ~~~lua
@@ -128,6 +132,46 @@ library first.
 A bare `[[Notebook]]` in an Org note — one written by hand, with no `denote:`
 identifier — resolves to `Notebook.org`, and creates it as an Org file if there
 is none. An existing Markdown page of that name is still reached as written.
+
+# Extracting a subtree
+**Note: Extract** is `denote-org-extract-org-subtree`: the section the cursor
+is in leaves the page and becomes a note of its own. The heading gives the
+title — with its TODO keyword, priority cookie and tags stripped — the tags
+give the keywords, and a `DATE` or `CREATED` property or a `CLOSED` stamp gives
+the date the identifier is minted from, in that order of preference. Only what
+the heading leaves unsaid is prompted for, so a fully annotated heading
+extracts without a single keystroke.
+
+Org's file tags are inherited by its headings, so a heading carrying no tags of
+its own carries the note's. Keywords are prompted for only when neither has
+any, and then only if `denote.prompts` lists them — the subdirectory and
+signature prompts work the same way, which is what makes this one command
+honour the same configuration as the other seven.
+
+With a selection, the selection is what leaves the page, and the title is
+prompted for: a passage has no heading to name it. That is the behaviour the
+old `Page: Extract` had, kept because a selection is still a thing people
+extract.
+
+Three deliberate differences from Denote:
+
+* **A link is left behind**, pointing at the new note by identifier. Denote
+  leaves nothing — in Emacs you link it yourself. A library addressed by
+  identifier is held together by its links, and the identifier is what
+  survives the new note being renamed.
+* **The whole subtree comes along.** Denote passes `org-get-entry`, which is
+  the text above the first subheading, while deleting the entire subtree — so
+  a section with children loses them. Taking all of it is the difference
+  between extracting a section and destroying one. Nested headings are
+  promoted so the shallowest sits at level 1.
+* **The new note's file type follows the page it came from.** Denote always
+  writes Org here, because in Emacs the heading was always in an Org file. The
+  body is in the source's syntax, so following the source is what keeps it
+  readable. A Markdown heading's `#tags` are read as its keywords, the same as
+  an Org heading's.
+
+A cursor above the first heading is refused rather than guessed at, which is
+the one case Denote also refuses.
 Such a note is Org but *not* Denote: it has no identifier, so nothing can link
 to it by one. The completion row above is the route that keeps a library
 consistent.
@@ -367,6 +411,14 @@ sharper reason — a verbatim read-then-write with the current name prefilled
 can mint two notes carrying one identifier, which §7.11 calls the thing that
 breaks linking. The top bar still renames a file directly.
 
+Two more are gone for the same kind of reason. `Page: Extract` named the new
+page by whatever was typed at its prompt, so it minted a page with no
+identifier — outside the naming scheme, and unreachable by every `denote:`
+link; **Note: Extract** replaces it. `Text: Link Selection` wrote
+`[text](url)` whatever the page it was on, which on an Org note is something
+neither format can follow, and **Note: Insert or Edit Link** and **Note: Insert
+Web Link** already write a link in the page's own syntax.
+
 ## 4. Beyond the core package
 Each is a separate Emacs package; each maps onto something SilverBullet
 already does well.
@@ -377,6 +429,10 @@ already does well.
   sequences]]. `denote-sequence-reparent` and `-reparent-recursive` are not,
   which makes a folgezettel tree write-once: a note can be given a signature
   and children hung off it, but a branch cannot be moved under a new parent.
+* **Org extras** (`denote-org`) — `denote-org-extract-org-subtree` is built;
+  see [[#Extracting a subtree]]. `denote-org-convert-links-to-file-type` and
+  its inverse, which rewrite a buffer's links between `denote:` and `file:`,
+  remain.
 * **The other dynamic block types** — `denote-files` and
   `denote-files-as-headings` remain.
 * **Silos** (`denote-silo`) — several independent Denote directories.

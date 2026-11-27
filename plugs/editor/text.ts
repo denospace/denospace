@@ -60,25 +60,6 @@ export async function numberListifySelection() {
   await editor.replaceRange(from, selection.to, text);
 }
 
-export async function linkSelection() {
-  const text = await editor.getText();
-  const selection = await editor.getSelection();
-  const textSelection = text.slice(selection.from, selection.to);
-  let linkedText = `[]()`;
-  let pos = 1;
-  if (textSelection.length > 0) {
-    try {
-      new URL(textSelection);
-      linkedText = `[](${textSelection})`;
-    } catch {
-      linkedText = `[${textSelection}]()`;
-      pos = linkedText.length - 1;
-    }
-  }
-  await editor.replaceRange(selection.from, selection.to, linkedText);
-  await editor.moveCursor(selection.from + pos);
-}
-
 export function wrapSelection(cmdDef: any) {
   return insertMarker(cmdDef.wrapper);
 }

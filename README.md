@@ -81,6 +81,14 @@ reason: it wrote the page back verbatim with the current name prefilled, so it
 could mint two notes carrying one identifier — the one thing Denote's manual
 says breaks linking, and it breaks it silently.
 
+Two more are gone for the same kind of reason. `Page: Extract` named the new
+page by whatever was typed at its prompt, so it minted a page with no
+identifier, outside the naming scheme and unreachable by every `denote:` link —
+`Note: Extract` replaces it. `Text: Link Selection` wrote `[text](url)`
+whatever the page it was on, which on an Org note is something neither format
+can follow; `Note: Insert or Edit Link` and `Note: Insert Web Link` write a
+link in the page's own syntax.
+
 | Command | Emacs equivalent |
 |---|---|
 | `Note: New` | `denote` |
@@ -90,6 +98,7 @@ says breaks linking, and it breaks it silently.
 | `Note: New in Subdirectory` | `denote-subdirectory` |
 | `Note: New from Template` | `denote-template` |
 | `Note: New from Region` | `denote-region` |
+| `Note: Extract` | `denote-org-extract-org-subtree` |
 | `Note: Insert or Edit Link` (`Alt-i`) | `denote-link-or-create`, `org-insert-link` |
 | `Note: Insert Web Link` (`Shift-Alt-i`) | `org-insert-link`, `org-cliplink` |
 | `Zotero: Insert Citation` | `citar-insert-citation` |

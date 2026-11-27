@@ -100,6 +100,40 @@ test.describe("the command palette", () => {
     );
   });
 
+  test("extracting is one command, and it is the Denote one", async ({
+    sbPage,
+    sbServer,
+  }) => {
+    // `Page: Extract` named the new page by whatever was typed, so it minted a
+    // page with no identifier -- outside the naming scheme and unreachable by
+    // every `denote:` link. `Note: Extract` is
+    // `denote-org-extract-org-subtree`, which reads the name off the heading.
+    await gotoSilverBulletPage(sbPage, sbServer, "index");
+    const rows = await offered(sbPage, "Extract");
+
+    expect(rows).toContain("Note: Extract");
+    expect(rows, "Page: Extract is back in the palette").not.toContain(
+      "Page: Extract",
+    );
+  });
+
+  test("linking is not offered twice, once in the wrong syntax", async ({
+    sbPage,
+    sbServer,
+  }) => {
+    // `Text: Link Selection` wrote `[text](url)` whatever the page, so on an
+    // Org note it produced something neither format can follow. What is left
+    // writes a link in the page's own syntax.
+    await gotoSilverBulletPage(sbPage, sbServer, "index");
+    const rows = await offered(sbPage, "Link");
+
+    expect(rows, "Text: Link Selection is back").not.toContain(
+      "Text: Link Selection",
+    );
+    expect(rows).toContain("Note: Insert or Edit Link");
+    expect(rows).toContain("Note: Insert Web Link");
+  });
+
   test("offers one way into the libraries panel", async ({
     sbPage,
     sbServer,

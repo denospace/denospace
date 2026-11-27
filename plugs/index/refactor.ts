@@ -423,53 +423,6 @@ export async function renamePrefixCommand(cmdDef: any) {
   await batchRenameFiles(allNewNames);
 }
 
-export async function extractToPageCommand() {
-  const selection = await editor.getSelection();
-  let text = await editor.getText();
-  text = text.slice(selection.from, selection.to);
-
-  const match = text.match("#{1,6}\\s+([^\n]*)");
-
-  let newName;
-  if (match) {
-    newName = match[1];
-  } else {
-    newName = "new page";
-  }
-  newName = await editor.prompt(`New page title:`, newName);
-  if (newName === undefined) {
-    return false;
-  }
-  newName = newName.trim();
-  if (newName === "") {
-    void editor.flashNotification(
-      "Must provide a non-empty page title.",
-      "error",
-    );
-  }
-
-  try {
-    // This throws an error if the page does not exist, which we expect to be the case
-    await space.getPageMeta(newName);
-    // So when we get to this point, we error out
-    throw new Error(
-      `Page ${newName} already exists, cannot rename to existing page.`,
-    );
-  } catch (e: any) {
-    if (e.message === notFoundError.message) {
-      // Expected not found error, so we can continue
-    } else {
-      await editor.flashNotification(e.message, "error");
-      throw e;
-    }
-  }
-  await editor.replaceRange(selection.from, selection.to, `[[${newName}]]`);
-  console.log("Writing new page to space");
-  await space.writePage(newName, text);
-  console.log("Navigating to new page");
-  await editor.navigate(newName);
-}
-
 /** The link text a rename writes for `name`, with `vanishingName` on its way out. */
 async function wikiLinkTextFor(
   name: string,

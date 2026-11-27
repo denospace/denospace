@@ -28,7 +28,6 @@ import {
   type LinkSyntax,
   linkFor,
   linkSyntaxFor,
-  pageLink,
   urlLink,
 } from "@silverbulletmd/silverbullet/lib/link_syntax";
 import { pathFromPageName } from "@silverbulletmd/silverbullet/lib/ref";
@@ -536,7 +535,7 @@ export async function promptForKeywords(
 }
 
 /** A note the prompts below just made, in the shape a link to it needs. */
-type CreatedNote = {
+export type CreatedNote = {
   name: string;
   identifier: string;
   title: string;
@@ -634,7 +633,7 @@ export function promptsWith(
 }
 
 /** What the prompts fill in between them. */
-type NoteDraft = NewNoteSpec & { tailOffset: number };
+export type NoteDraft = NewNoteSpec & { tailOffset: number };
 
 /** A prompt fills in part of the draft, or answers false to abandon the note. */
 type NotePrompt = (draft: NoteDraft) => Promise<boolean>;
@@ -875,11 +874,23 @@ const notePrompts: Record<DenotePromptName, NotePrompt> = {
  * Returns undefined when any prompt is cancelled, which abandons the whole
  * note: an empty answer to Denote's title prompt is not a note.
  */
-async function promptForNewNote(
+export async function promptForNewNote(
   options: {
     extra?: DenotePromptName;
     defaultTitle?: string;
     body?: string;
+    /**
+     * What the caller already knows about the note, which `answered` then
+     * keeps unasked.
+     */
+    seed?: Partial<Pick<NoteDraft, "keywords" | "date" | "fileType">>;
+    /**
+     * Prompts not to ask, because the caller has the answer. `Note: Extract`
+     * reads the title, the keywords and the date off the heading it is
+     * extracting, and Denote asks for each of those only when the heading has
+     * nothing to say about it.
+     */
+    answered?: DenotePromptName[];
   } = {},
 ): Promise<CreatedNote | undefined> {
   const { prompts, unknown } = readPromptNames(
@@ -893,11 +904,17 @@ async function promptForNewNote(
   }
   const draft: NoteDraft = {
     title: options.defaultTitle ?? "",
-    keywords: [],
+    keywords: options.seed?.keywords ?? [],
+    date: options.seed?.date,
+    fileType: options.seed?.fileType,
     body: options.body,
     tailOffset: 0,
   };
+  const answered = new Set(options.answered ?? []);
   for (const name of promptsWith(prompts, options.extra)) {
+    if (answered.has(name)) {
+      continue;
+    }
     if (!(await notePrompts[name](draft))) {
       return;
     }
@@ -936,7 +953,7 @@ async function promptForNewNote(
  * matter — or at a template's `|^|`, which is the only thing that puts it
  * anywhere but the end.
  */
-async function openNewNote(name: string, tailOffset = 0): Promise<void> {
+export async function openNewNote(name: string, tailOffset = 0): Promise<void> {
   const text = await space.readPage(name);
   await editor.navigate({
     // A ref carries a *path*, which always has an extension, while a Markdown

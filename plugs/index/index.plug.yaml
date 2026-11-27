@@ -534,10 +534,13 @@ functions:
   renameDocumentCommand:
     path: "./refactor.ts:renameDocumentCommand"
 
-  extractToPageCommand:
-    path: ./refactor.ts:extractToPageCommand
+  # `denote-org-extract-org-subtree`. It replaced `Page: Extract`, which wrote
+  # a page named by the typed title -- no identifier, outside the naming
+  # scheme, and unreachable by every `denote:` link.
+  extractNoteCommand:
+    path: ./denote_extract.ts:extractNoteCommand
     command:
-      name: "Page: Extract"
+      name: "Note: Extract"
       requireMode: rw
       requireEditor: page
 
