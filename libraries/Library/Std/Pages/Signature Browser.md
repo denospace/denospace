@@ -3,7 +3,8 @@ in place of tags: the first level is the Johnny-Decimal category (`21 iteam`,
 `23 Become a Therapist`), the second is the notes in it (`21=04 …`), and the
 editor is the third.
 
-`Shift-Alt-t` opens it, docked left.
+`Shift-Alt-t` opens it, docked left. `Shift-Left` collapses it to the
+categories alone, `Shift-Right` opens it back up.
 
 ```space-lua
 -- priority: 10
@@ -117,7 +118,10 @@ view.define {
     hierarchy = { field = "name", separator = "\31" },
     -- Both levels on screen at once, which is the point: debear shows the
     -- tags and the notes side by side, and a browser that opens as forty
-    -- collapsed numbers shows neither. What you collapse is remembered.
+    -- collapsed numbers shows neither. `Shift-Left` shuts the lot when you
+    -- want the categories alone, and what you collapse is remembered -- which
+    -- it genuinely is now: restoring a collapsed set under `expandAll` used to
+    -- throw it away (see the expansion read in `activation.ts`).
     expandAll = true,
     row = {
       -- The path nests the row; this is what it reads as. A synthesized

@@ -21,6 +21,7 @@ The **navigator** is SilverBullet’s generalized navigation UI: it takes any co
 * `Enter` opens the selected row. `Escape` closes the panel, whether or not you have typed anything.
 * Typing ranks rows fuzzily, highlighting the matched characters in each row’s name, list or tree alike.
 * In a tree, `Right` expands (or steps into) a folder and `Left` collapses it (or steps out to its parent). `Enter` on a plain folder expands it, on a folder that is *also* a page it opens the page.
+* `Shift-Left` collapses the **whole** tree and `Shift-Right` expands it, at every depth -- the same thing ${widgets.commandButton("Navigate: Collapse All")} and ${widgets.commandButton("Navigate: Expand All")} do, for when the tree does not have focus. Neither command carries a key, because an unmodified keystroke never leaves the panel's filter box; bind a chord with `command.update` if you want one. While a filter is typed both refuse and say so: a filtered tree is force-expanded to show its matches, so the change would be invisible now and a surprise later.
 * `Tab` / `Shift-Tab` step through the segments.
 * `Shift-Enter` creates whatever you typed, in views that allow it. A create row also appears on its own: second in a list, pinned below the tree in a tree.
 * The **first character typed into an empty box can route**:

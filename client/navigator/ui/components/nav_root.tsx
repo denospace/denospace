@@ -21,6 +21,10 @@ import { handleKeyDown } from "../keyboard.ts";
 import type { ActiveView, PanelSetters, SharedRefs } from "../panel.ts";
 import { resolvePrefix } from "../prefix.ts";
 import { markSlotReady, type NavActivation } from "../slots.ts";
+import {
+  registerTreeHandle,
+  unregisterTreeHandle,
+} from "../tree_handles.ts";
 import { CloseIcon } from "./chrome_icons.tsx";
 import { ContentBody, CopyMarkdownButton } from "./content_view.tsx";
 import { CreateRow } from "./create_row.tsx";
@@ -196,6 +200,21 @@ export function NavRoot({
     set,
     refresh: () => refresh.current(),
   });
+
+  // `Navigate: Collapse All` and its opposite come in from the command
+  // palette, which is itself a navigator panel -- so by the time one runs,
+  // focus is in the palette's input and this panel's keydown handler is out of
+  // the picture. The registration is what it reaches instead. Through a ref
+  // because `cmd` is rebuilt every render and this effect must not be.
+  const setAllExpandedRef = useRef(cmd.setAllExpanded);
+  setAllExpandedRef.current = cmd.setAllExpanded;
+  useEffect(() => {
+    if (!derived.isTreeMode) return;
+    registerTreeHandle(slot, {
+      setAllExpanded: (expand) => setAllExpandedRef.current(expand),
+    });
+    return () => unregisterTreeHandle(slot);
+  }, [slot, derived.isTreeMode]);
 
   const {
     segments,

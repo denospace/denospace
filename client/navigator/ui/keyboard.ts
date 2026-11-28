@@ -6,7 +6,8 @@ import type { ActiveView, PanelSetters } from "./panel.ts";
 import { cycleSegmentIndex } from "./segments.ts";
 
 // Keys that move the selection, i.e. that put the panel in navigating mode.
-// (Tree mode adds ArrowLeft/ArrowRight; in list mode those move the caret.)
+// (Tree mode adds ArrowLeft/ArrowRight, with or without Shift; in list mode
+// those move the caret.)
 const NAV_KEYS = new Set([
   "ArrowUp",
   "ArrowDown",
@@ -264,6 +265,13 @@ function treeKeyDown(e: KeyboardEvent, ctx: KeyContext) {
     setTreePath(0);
   } else if (e.key === "End") {
     setTreePath(treeLastIndex);
+  } else if (e.shiftKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
+    // The whole tree, in the direction the plain arrow moves one folder.
+    // Ahead of those two branches, which ignore Shift. It stays a panel key
+    // rather than riding on the commands' own binding because the global
+    // fallback in `editor_ui.tsx` hands a plain (unmodified) key straight to
+    // whatever native input has focus -- which here is the filter box.
+    cmd.setAllExpanded(e.key === "ArrowRight");
   } else if (e.key === "ArrowRight") {
     if (!activeTreeNode?.isFolder) return;
     if (!treeDisplay?.effectiveExpanded.has(activeTreeNode.path)) {

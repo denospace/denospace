@@ -1,5 +1,9 @@
 import { datastore, editor } from "@silverbulletmd/silverbullet/syscalls";
-import { planMove, withExpanded } from "../../../plug-api/ui/tree_model.ts";
+import {
+  allFolderPaths,
+  planMove,
+  withExpanded,
+} from "../../../plug-api/ui/tree_model.ts";
 import type { NavigatorEngine } from "./engine.ts";
 import { expansionKey } from "./expansion.ts";
 import type { DerivedView } from "./hooks/use_derived.ts";
@@ -61,6 +65,34 @@ export function createTreeCommands({
     });
   }
 
+  /**
+   * Every folder open, or every folder shut, in one gesture.
+   *
+   * Membership in the stored set means "shut" under `expandAll` and "open"
+   * without it, so one reading's "all open" is the other's "all shut": the
+   * empty set when `expand` agrees with the flag, every folder path when it
+   * does not. Returns whether it did anything, so a caller outside the panel
+   * can say why not.
+   */
+  function setAllExpanded(expand: boolean): boolean {
+    // No focus hand-back, unlike `toggleExpanded`: nothing clicks this. On the
+    // `Shift-Arrow` path focus is already in the input, and on the command
+    // path the palette's own `close` does `editor.focus()` afterwards -- so a
+    // `.focus()` here would be a no-op either way, not a safeguard.
+    // A filtered tree is force-expanded to show its matches, so neither set is
+    // consulted and this would be invisible -- while still being written to
+    // the datastore, to be discovered whenever the filter was next cleared.
+    if (treeFiltering || !treeDisplay) return false;
+    const next =
+      expand === expandAll
+        ? new Set<string>()
+        : allFolderPaths(treeDisplay.tree);
+    expandedDirty.current = true;
+    setExpanded(next);
+    persistExpanded(next);
+    return true;
+  }
+
   function expandPath(path: string) {
     expandedDirty.current = true;
     setExpanded((prev) => {
@@ -104,5 +136,5 @@ export function createTreeCommands({
     refresh();
   }
 
-  return { toggleExpanded, expandPath, moveNode };
+  return { toggleExpanded, setAllExpanded, expandPath, moveNode };
 }

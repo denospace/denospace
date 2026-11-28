@@ -23,14 +23,17 @@ const repoDir = join(plugsDir, "..");
 /**
  * Every command this product registers.
  *
- * A command is registered in **four** places, and reading fewer than all of
+ * A command is registered in **five** places, and reading fewer than all of
  * them undercounts badly enough to make a lock test useless: the plug
  * manifests here, `command.define`/`command.update` in library Lua,
- * `view.define`/`navigator.define`'s own `command` key, and client TypeScript
- * in `client/editor_commands.ts` -- which is where every `Editor:` cursor
- * command and `Note: Toggle Link Display` live. The namespace list below
- * covered only the manifests until this read the rest, so `Baked Sections:`
- * had never been seen by it.
+ * `view.define`/`navigator.define`'s own `command` key, and two files of
+ * client TypeScript -- `client/editor_commands.ts`, where every `Editor:`
+ * cursor command and `Note: Toggle Link Display` live, and
+ * `client/navigator/commands.ts`, which holds the navigator's own. The
+ * namespace list below covered only the manifests until this read the rest, so
+ * `Baked Sections:` had never been seen by it; the fifth site was found the
+ * same way, when `Navigate: Collapse All` was added there and nothing
+ * noticed -- `Revision:` had been invisible to this test all along.
  *
  * Only fenced `space-lua` blocks run; a plain ```lua block in the API docs is
  * an example, and `APIs/Command.md` has several that would otherwise be read
@@ -84,13 +87,15 @@ function commands(): Command[] {
   };
   walk(join(repoDir, "libraries"));
 
-  // Client TypeScript.
-  const client = readFileSync(
-    join(repoDir, "client", "editor_commands.ts"),
-    "utf8",
-  );
-  for (const m of client.matchAll(/name:\s*"([A-Z][^"]*:\s[^"]+)"/g)) {
-    found.push({ name: m[1], plug: "client" });
+  // Client TypeScript, in the two files that register commands.
+  for (const file of [
+    ["client", "editor_commands.ts"],
+    ["client", "navigator", "commands.ts"],
+  ]) {
+    const client = readFileSync(join(repoDir, ...file), "utf8");
+    for (const m of client.matchAll(/name:\s*"([A-Z][^"]*:\s[^"]+)"/g)) {
+      found.push({ name: m[1], plug: `client:${file[file.length - 1]}` });
+    }
   }
 
   return found;
@@ -103,10 +108,14 @@ const offered = all.filter((c) => !c.hidden);
 
 test("every registration site was actually read", () => {
   // An empty list would make every case below pass, and reading only the
-  // manifests would miss a third of the surface. The four sites together are
-  // just under 200 commands; the manifests alone are about 120.
+  // manifests would miss a third of the surface. The five sites together are
+  // just over 200 commands; the manifests alone are about 120.
   expect(all.length).toBeGreaterThan(180);
-  for (const site of ["client", "library:Widgets.md"]) {
+  for (const site of [
+    "client:editor_commands.ts",
+    "client:commands.ts",
+    "library:Widgets.md",
+  ]) {
     expect(
       all.some((c) => c.plug === site),
       `nothing was read from ${site}`,
@@ -169,6 +178,7 @@ test("the namespaces are the ones this product means to have", () => {
     "Outline",
     "Page",
     "Plugs",
+    "Revision",
     "Search",
     "Share",
     "Space",
@@ -182,6 +192,19 @@ test("the namespaces are the ones this product means to have", () => {
     "Widgets",
     "Zotero",
   ]);
+});
+
+test("collapsing a tree is one command, reachable from the palette", () => {
+  // The pair exists because the only way to shut a forty-category tree was
+  // forty presses of ArrowLeft. They carry no key: `Shift-ArrowLeft` and
+  // `Shift-ArrowRight` are handled inside the panel, since an unmodified key
+  // never leaves the filter input the panel keeps focus in.
+  const names = offered.map((c) => c.name);
+  expect(names).toContain("Navigate: Collapse All");
+  expect(names).toContain("Navigate: Expand All");
+  // And under the namespace the rest of the navigator already uses, rather
+  // than a sixth one-command `Tree:`.
+  expect(names.filter((n) => /^Tree:/.test(n))).toEqual([]);
 });
 
 test("the journal has one command per action", () => {

@@ -1,5 +1,5 @@
 import { datastore, editor } from "@silverbulletmd/silverbullet/syscalls";
-import { withExpanded } from "../../../plug-api/ui/tree_model.ts";
+import { ancestorPaths } from "../../../plug-api/ui/tree_model.ts";
 import type { NavigatorEngine, ViewState } from "./engine.ts";
 import { expansionKey } from "./expansion.ts";
 import {
@@ -178,11 +178,36 @@ export function createActivate(deps: ActivationDeps) {
           void datastore.get(key).then((saved) => {
             // Guards against a newer activation or a manual toggle that happened while this load was in flight — landing this stale snapshot would silently reopen a folder the user just closed.
             if (displayed.current !== name || expandedDirty.current) return;
-            // Merged, not replaced: this also races applyReveal's own ancestor-expansion with no fixed order between the two, and a union converges the same way regardless of which arrives first.
             const paths = Array.isArray(saved) ? (saved as string[]) : [];
-            setExpanded((prev) =>
-              withExpanded(prev, paths, state.meta.expandAll === true),
-            );
+            const expandAll = state.meta.expandAll === true;
+            // Merged, not replaced: this races applyReveal's own ancestor
+            // expansion with no fixed order between the two.
+            //
+            // A union, not `withExpanded`. The stored set lives in the same
+            // space as the live one -- what the user shut under `expandAll`,
+            // what they opened without it -- so restoring it is a union under
+            // either reading. `withExpanded` means "open these", which under
+            // `expandAll` is a *removal*: it subtracted the stored set from an
+            // empty one and threw the whole thing away, so a collapsed folder
+            // in an `expandAll` tree came back open every reload. That is
+            // every such tree -- Signatures, the Journal, the Mention Inbox.
+            setExpanded((prev) => {
+              const next = new Set([...prev, ...paths]);
+              // The reveal is the newer intent -- you navigated there -- so it
+              // wins over what was stored. Under `expandAll` it opens
+              // ancestors by removing them, which the union above would
+              // undo; a reveal that lands *after* this does its own removal
+              // and needs nothing here, so both orders converge.
+              if (expandAll && revealedPage.current !== undefined) {
+                for (const path of ancestorPaths(
+                  revealedPage.current,
+                  state.meta.hierarchy.separator,
+                )) {
+                  next.delete(path);
+                }
+              }
+              return next;
+            });
           });
         }
         // A remount showing cached rows: this panel wasn't there to hear

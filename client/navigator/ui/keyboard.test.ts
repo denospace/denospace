@@ -32,6 +32,7 @@ function makeCmd(trace: Trace, selectable: boolean): Commands {
     runAction: record("runAction"),
     selectRow: record("selectRow"),
     toggleExpanded: record("toggleExpanded"),
+    setAllExpanded: record("setAllExpanded", true),
     moveNode: record("moveNode"),
     selectTreeNode: record("selectTreeNode"),
     onTreeRowClick: record("onTreeRowClick"),
@@ -334,6 +335,46 @@ describe("tree keys", () => {
       }),
     );
     expect(trace).toEqual(["setSelectedPath(Projects)"]);
+  });
+
+  it("takes the whole tree on Shift-ArrowLeft and Shift-ArrowRight", () => {
+    const trace: Trace = [];
+    const ctx = makeTreeCtx(trace, {
+      nodes,
+      selected: "Journal",
+      expanded: ["Journal"],
+    });
+    const left = press({ key: "ArrowLeft", shiftKey: true });
+    handleKeyDown(left.e, ctx);
+    const right = press({ key: "ArrowRight", shiftKey: true });
+    handleKeyDown(right.e, ctx);
+    // Not `toggleExpanded`: the Shift branch has to run ahead of the two plain
+    // arrow branches, which ignore the modifier entirely.
+    expect(trace).toEqual(["setAllExpanded(false)", "setAllExpanded(true)"]);
+    expect(left.prevented()).toBe(true);
+    expect(right.prevented()).toBe(true);
+  });
+
+  it("takes the whole tree with no row selected at all", () => {
+    // The plain arrows need a selected node; this acts on the tree, so an
+    // untouched panel is the commonest case and must not be a no-op.
+    const trace: Trace = [];
+    handleKeyDown(
+      press({ key: "ArrowLeft", shiftKey: true }).e,
+      makeTreeCtx(trace, { nodes: [], selected: "" }),
+    );
+    expect(trace).toEqual(["setAllExpanded(false)"]);
+  });
+
+  it("leaves Shift-ArrowUp as plain selection movement", () => {
+    // Only the two horizontal arrows gain a Shift meaning: Shift-Up/Down
+    // still walk the rows, as they did before.
+    const trace: Trace = [];
+    handleKeyDown(
+      press({ key: "ArrowUp", shiftKey: true }).e,
+      makeTreeCtx(trace, { nodes, selected: "Journal/Today" }),
+    );
+    expect(trace).toEqual(["setSelectedPath(Journal)"]);
   });
 
   it("leaves a collapsed root folder alone on ArrowLeft", () => {
