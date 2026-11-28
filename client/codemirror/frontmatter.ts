@@ -95,7 +95,7 @@ export function shouldRenderFrontmatterLivePreview({
   to: number;
 }): boolean {
   return (
-    !client.ui.viewState.uiOptions.markdownSyntaxRendering &&
+    !client.ui.viewState.uiOptions.rawMarkup &&
     !isCursorInRange(state, [from, to])
   );
 }

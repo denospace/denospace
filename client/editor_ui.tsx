@@ -338,11 +338,10 @@ export class MainUI {
     }, [viewState.uiOptions.darkMode]);
 
     useEffect(() => {
-      document.documentElement.dataset.markdownSyntaxRendering = viewState
-        .uiOptions.markdownSyntaxRendering
+      document.documentElement.dataset.rawMarkup = viewState.uiOptions.rawMarkup
         ? "on"
         : "off";
-    }, [viewState.uiOptions.markdownSyntaxRendering]);
+    }, [viewState.uiOptions.rawMarkup]);
 
     useEffect(() => {
       // The stylesheet keys the two font tokens off this and nothing else, so

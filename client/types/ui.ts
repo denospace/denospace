@@ -44,7 +44,14 @@ export type AppViewState = {
   uiOptions: {
     vimMode: boolean;
     darkMode?: boolean;
-    markdownSyntaxRendering: boolean;
+    /**
+     * Whether the markup shows as written rather than being rendered away --
+     * Emacs's `visible-mode`, give or take. It governs the whole clean-mode
+     * plugin set, Org's own plugins included, so it is not about any one
+     * markup language; it was called `markdownSyntaxRendering` upstream,
+     * which named the only language upstream had.
+     */
+    rawMarkup: boolean;
     /**
      * Whether prose and the UI are set in the monospace face rather than the
      * proportional one -- Emacs's `variable-pitch-mode`, turned the other way
@@ -103,7 +110,7 @@ export const initialViewState: AppViewState = {
   uiOptions: {
     vimMode: false,
     darkMode: undefined,
-    markdownSyntaxRendering: false,
+    rawMarkup: false,
     monospacePitch: false,
     foldMetadata: true,
     editorLayout: "prose",

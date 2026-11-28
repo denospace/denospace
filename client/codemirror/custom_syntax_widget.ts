@@ -133,7 +133,7 @@ export function customSyntaxPlugin(client: Client) {
             }).range(node.to),
           );
 
-          if (!client.ui.viewState.uiOptions.markdownSyntaxRendering) {
+          if (!client.ui.viewState.uiOptions.rawMarkup) {
             widgets.push(invisibleDecoration.range(node.from, node.to));
           }
         }

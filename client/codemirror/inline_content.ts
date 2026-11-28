@@ -57,13 +57,12 @@ export function inlineContentPlugin(client: Client) {
           client.clientSystem.allKnownFiles,
         );
 
-        const renderingSyntax =
-          client.ui.viewState.uiOptions.markdownSyntaxRendering;
+        const rawMarkup = client.ui.viewState.uiOptions.rawMarkup;
         const cursorIsInRange = isCursorInRange(state, [from, to]);
         if (cursorIsInRange) {
           return;
         }
-        if (!renderingSyntax && !cursorIsInRange) {
+        if (!rawMarkup && !cursorIsInRange) {
           widgets.push(invisibleDecoration.range(from, to));
         }
 

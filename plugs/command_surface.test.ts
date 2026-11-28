@@ -374,3 +374,27 @@ test("the two commands Note: Extract and the link commands replace are gone", ()
     offered.filter((c) => c.name.startsWith("Text: ")).length,
   ).toBeGreaterThan(5);
 });
+
+test("no offered command names a markup language the space is not written in", () => {
+  // `Editor: Toggle Markdown Syntax Rendering` survived the Org conversion
+  // untouched, because nothing it does is Markdown-specific: it governs the
+  // whole clean-mode plugin set, Org's own plugins included, so it kept
+  // working and kept saying "Markdown" while doing it. It is
+  // `Editor: Toggle Markup Display` now, and this is here so the next such
+  // leftover is caught by a test rather than by the user reading the palette.
+  //
+  // Only "Markdown" is forbidden, and only in the palette. The syscall API is
+  // a different surface with a different audience -- `markdown.parseMarkdown`
+  // parses Markdown and should say so -- and the docs still have a
+  // `[[Markdown]]` page, because the parser is still there for the `.md`
+  // files that remain.
+  const offenders = offered
+    .map((c) => c.name)
+    .filter((name) => /markdown/i.test(name));
+  expect(offenders).toEqual([]);
+
+  const toggle = offered.find(
+    (c) => c.name === "Editor: Toggle Markup Display",
+  );
+  expect(toggle, "Editor: Toggle Markup Display is missing").toBeDefined();
+});

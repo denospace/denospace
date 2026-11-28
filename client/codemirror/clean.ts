@@ -28,7 +28,7 @@ import { taskListPlugin } from "./task.ts";
 import { cleanWikiLinkPlugin } from "./wiki_link.ts";
 
 export function cleanModePlugins(client: Client) {
-  const pluginsNeededEvenWhenRenderingSyntax = [
+  const pluginsNeededEvenWithRawMarkup = [
     luaDirectivePlugin(client),
     cleanWikiLinkPlugin(client),
     denoteLinkPlugin(client),
@@ -40,12 +40,12 @@ export function cleanModePlugins(client: Client) {
     customSyntaxPlugin(client),
   ];
 
-  if (client.ui.viewState.uiOptions.markdownSyntaxRendering) {
-    return pluginsNeededEvenWhenRenderingSyntax;
+  if (client.ui.viewState.uiOptions.rawMarkup) {
+    return pluginsNeededEvenWithRawMarkup;
   }
 
   return [
-    ...pluginsNeededEvenWhenRenderingSyntax,
+    ...pluginsNeededEvenWithRawMarkup,
     linkPlugin(client),
     blockquotePlugin(),
     admonitionPlugin(),

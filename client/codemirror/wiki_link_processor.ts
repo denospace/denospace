@@ -102,9 +102,9 @@ export function processWikiLink(options: WikiLinkProcessorOptions): any[] {
     default: "",
   }[linkStatus];
 
-  const renderingSyntax = client.ui.viewState.uiOptions.markdownSyntaxRendering;
+  const rawMarkup = client.ui.viewState.uiOptions.rawMarkup;
 
-  if (isCursorInRange(state, [from, to]) || renderingSyntax) {
+  if (isCursorInRange(state, [from, to]) || rawMarkup) {
     // Only attach a CSS class, then get out
     if (linkStatus !== "default") {
       widgets.push(

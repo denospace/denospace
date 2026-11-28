@@ -14,7 +14,7 @@ function stateWithSelection(doc: string, selection = 0) {
   });
 }
 
-function clientWithMarkdownSyntaxRendering(markdownSyntaxRendering: boolean) {
+function clientWithRawMarkup(rawMarkup: boolean) {
   return {
     config: {
       get(path: string, defaultValue: unknown) {
@@ -25,7 +25,7 @@ function clientWithMarkdownSyntaxRendering(markdownSyntaxRendering: boolean) {
     ui: {
       viewState: {
         uiOptions: {
-          markdownSyntaxRendering,
+          rawMarkup,
         },
         allPages: [],
       },
@@ -42,11 +42,11 @@ function countExactFrontmatterDecorations(args: {
   doc: string;
   from: number;
   to: number;
-  markdownSyntaxRendering: boolean;
+  rawMarkup: boolean;
   selection?: number;
 }) {
   const extension = frontmatterPlugin(
-    clientWithMarkdownSyntaxRendering(args.markdownSyntaxRendering) as any,
+    clientWithRawMarkup(args.rawMarkup) as any,
   );
   const state = EditorState.create({
     doc: args.doc,
@@ -69,7 +69,7 @@ describe("frontmatter live preview policy", () => {
     expect(
       shouldRenderFrontmatterLivePreview({
         state,
-        client: clientWithMarkdownSyntaxRendering(true) as any,
+        client: clientWithRawMarkup(true) as any,
         from: 6,
         to: 29,
       }),
@@ -82,7 +82,7 @@ describe("frontmatter live preview policy", () => {
     expect(
       shouldRenderFrontmatterLivePreview({
         state,
-        client: clientWithMarkdownSyntaxRendering(false) as any,
+        client: clientWithRawMarkup(false) as any,
         from: 6,
         to: 29,
       }),
@@ -98,7 +98,7 @@ describe("frontmatter live preview policy", () => {
     expect(
       shouldRenderFrontmatterLivePreview({
         state,
-        client: clientWithMarkdownSyntaxRendering(false) as any,
+        client: clientWithRawMarkup(false) as any,
         from: 7,
         to: 30,
       }),
@@ -115,7 +115,7 @@ describe("frontmatter live preview policy", () => {
         doc,
         from,
         to,
-        markdownSyntaxRendering: true,
+        rawMarkup: true,
       }),
     ).toBe(0);
   });
@@ -130,7 +130,7 @@ describe("frontmatter live preview policy", () => {
         doc,
         from,
         to,
-        markdownSyntaxRendering: false,
+        rawMarkup: false,
       }),
     ).toBe(1);
   });

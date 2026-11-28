@@ -1,6 +1,6 @@
 #meta
 
-Some convenient slash commands for editing Markdown files.
+Some convenient slash commands for editing notes.
 
 ```space-lua
 -- priority: 10

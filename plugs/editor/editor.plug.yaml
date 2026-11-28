@@ -30,10 +30,10 @@ functions:
     path: "./editor.ts:cycleViewCommand"
     command:
       name: "Editor: Cycle View"
-  toggleMarkdownSyntaxRendering:
-    path: "./editor.ts:toggleMarkdownSyntaxRendering"
+  toggleRawMarkup:
+    path: "./editor.ts:toggleRawMarkup"
     command:
-      name: "Editor: Toggle Markdown Syntax Rendering"
+      name: "Editor: Toggle Markup Display"
   openTagNavigator:
     path: editor.ts:openTagNavigator
     command:

@@ -57,7 +57,7 @@ export function luaDirectivePlugin(client: Client) {
         }
 
         const hideSource = () => {
-          if (client.ui.viewState.uiOptions.markdownSyntaxRendering) return;
+          if (client.ui.viewState.uiOptions.rawMarkup) return;
           hideBlockSource(widgets, state, node.from, node.to, "start");
         };
 

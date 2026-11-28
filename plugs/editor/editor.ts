@@ -43,14 +43,9 @@ export async function setEditorMode() {
     await editor.setUiOption("editorLayout", layout);
     await editor.rebuildEditorState();
   }
-  const markdownSyntaxRendering = await clientStore.get(
-    "markdownSyntaxRendering",
-  );
-  if (markdownSyntaxRendering != null) {
-    await editor.setUiOption(
-      "markdownSyntaxRendering",
-      markdownSyntaxRendering,
-    );
+  const rawMarkup = await clientStore.get("rawMarkup");
+  if (rawMarkup != null) {
+    await editor.setUiOption("rawMarkup", rawMarkup);
     await editor.rebuildEditorState();
   }
 }
@@ -115,9 +110,21 @@ export async function toggleMetadata() {
  * entirely until the caret is on its line. It reads like what it will become.
  */
 const views = [
-  { value: "prose", name: "Prose", description: "Markers in the margin, one text edge" },
-  { value: "outline", name: "Outline", description: "A step and a rule per level" },
-  { value: "tufte", name: "Tufte", description: "The published look: serif, narrow, quiet" },
+  {
+    value: "prose",
+    name: "Prose",
+    description: "Markers in the margin, one text edge",
+  },
+  {
+    value: "outline",
+    name: "Outline",
+    description: "A step and a rule per level",
+  },
+  {
+    value: "tufte",
+    name: "Tufte",
+    description: "The published look: serif, narrow, quiet",
+  },
 ];
 
 export async function switchViewCommand() {
@@ -153,11 +160,11 @@ async function setView(view: string) {
   );
 }
 
-export async function toggleMarkdownSyntaxRendering() {
-  let renderingSyntax = await editor.getUiOption("markdownSyntaxRendering");
-  renderingSyntax = !renderingSyntax;
-  await clientStore.set("markdownSyntaxRendering", renderingSyntax);
-  await editor.setUiOption("markdownSyntaxRendering", renderingSyntax);
+export async function toggleRawMarkup() {
+  let rawMarkup = await editor.getUiOption("rawMarkup");
+  rawMarkup = !rawMarkup;
+  await clientStore.set("rawMarkup", rawMarkup);
+  await editor.setUiOption("rawMarkup", rawMarkup);
   await editor.rebuildEditorState();
 }
 
